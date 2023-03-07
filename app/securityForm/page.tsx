@@ -14,7 +14,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { signOut } from 'next-auth/react';
-
+import CancelTwoToneIcon from '@mui/icons-material/CancelTwoTone';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import CollectionsOutlinedIcon from '@mui/icons-material/CollectionsOutlined';
 
@@ -22,6 +22,9 @@ import Checkbox from '@mui/material/Checkbox';
 import VehicleGateIn from '../components/vehicleGateIn';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import closeIcon from '../../assets/popup_close_icon.svg';
+import Image from 'next/image'
+
 type props = {
   searchParams: any,
 };
@@ -54,7 +57,12 @@ function SecurityForm({ searchParams }: props) {
   const [gateOutDate, setGateOutDate] = React.useState<Dayjs | null>(
     dayjs(),
   );
-  const [isCameraAvailable, setIsCameraAvailable] = useState(false);
+  const [vehcileReportingFiles, setVehcileReportingFiles] = useState<{ name: string; preview: string }[]>([]);
+  const [vehcileGateInFiles, setVehcileGateInFiles] = useState<{ name: string; preview: string }[]>([]);
+  const [vehcileLoadInFiles, setVehcileLoadInFiles] = useState<{ name: string; preview: string }[]>([]);
+  const [vehcileLoadOutFiles, setVehcileLoadOutFiles] = useState<{ name: string; preview: string }[]>([]);
+  const [vehcileGateOutFiles, setVehcileGateOutFiles] = useState<{ name: string; preview: string }[]>([]);
+
   const [checklists0, setChecklists0] = useState([
     {
     point: 'Pollution certificate is valid?',
@@ -183,8 +191,14 @@ const [checklists4, setChecklists4] = useState([
     });
   };
   const handleSave = async () => {
+    let formData = new FormData();
     let payload = {};
     if (activeStep === 0) {
+      for (let i = 0; i < vehcileReportingFiles.length; i++) {
+        formData.append('images', dataURItoBlob(vehcileReportingFiles[i].preview), vehcileReportingFiles[i].name);
+      }
+      formData.append('stage', 'stage1');
+      formData.append('_id', securityCheck._id);
       payload = {
         _id: securityCheck._id,
       stage: 'stage1',
@@ -194,6 +208,11 @@ const [checklists4, setChecklists4] = useState([
       stageDateTime: reportingDate,
       }
     } else if (activeStep === 1) {
+      for (let i = 0; i < vehcileGateInFiles.length; i++) {
+        formData.append('images', dataURItoBlob(vehcileGateInFiles[i].preview), vehcileGateInFiles[i].name);
+      }
+      formData.append('stage', 'stage2');
+      formData.append('_id', securityCheck._id);
       payload = {
         _id: securityCheck._id,
         stage: 'stage2',
@@ -204,6 +223,11 @@ const [checklists4, setChecklists4] = useState([
         checklist: checklists1 
       }
     } else if (activeStep === 2) {
+      for (let i = 0; i < vehcileLoadInFiles.length; i++) {
+        formData.append('images', dataURItoBlob(vehcileLoadInFiles[i].preview), vehcileLoadInFiles[i].name);
+      }
+      formData.append('stage', 'stage3');
+      formData.append('_id', securityCheck._id);
       payload = {
         _id: securityCheck._id,
         stage: 'stage3',
@@ -214,6 +238,11 @@ const [checklists4, setChecklists4] = useState([
         checklist: checklists2
       }
     } else if (activeStep === 3) {
+      for (let i = 0; i < vehcileLoadOutFiles.length; i++) {
+        formData.append('images', dataURItoBlob(vehcileLoadOutFiles[i].preview), vehcileLoadOutFiles[i].name);
+      }
+      formData.append('stage', 'stage4');
+      formData.append('_id', securityCheck._id);
       payload = {
         _id: securityCheck._id,
         stage: 'stage4',
@@ -224,6 +253,11 @@ const [checklists4, setChecklists4] = useState([
         checklist: checklists3
       } 
     } else if (activeStep === 4) {
+      for (let i = 0; i < vehcileGateOutFiles.length; i++) {
+        formData.append('images', dataURItoBlob(vehcileGateOutFiles[i].preview), vehcileGateOutFiles[i].name);
+      }
+      formData.append('stage', 'stage5');
+      formData.append('_id', securityCheck._id);
       payload = {
         _id: securityCheck._id,
         stage: 'stage5',
@@ -243,8 +277,26 @@ const [checklists4, setChecklists4] = useState([
         }
     });
     const data = await response.json();
+    const imageResponse = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage_images', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+        }
+    });
+    const imageData = await imageResponse.json();
     
   }
+  const dataURItoBlob = (dataURI: string) => {
+    const byteString = atob(dataURI.split(',')[1]);
+    const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([ab], { type: mimeString });
+  };
 
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
@@ -358,20 +410,10 @@ const [checklists4, setChecklists4] = useState([
     setChecklists4(newChecklists);
   };
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-
-  const handleClick = () => {
-    setOpen(true);
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://dev-api.instavans.com/api/thor/shipper_user/sign_out', {
+    await fetch('https://dev-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
-    body: JSON.stringify({from: 'web'}),
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
         'Content-Type': 'application/json',
@@ -381,6 +423,122 @@ const [checklists4, setChecklists4] = useState([
     
     window.localStorage.removeItem('nextauth.session-token');
 }
+
+const handleVehicleReportFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const fileList = event.target.files;
+  const fileArray: { name: string; preview: string }[] = [];
+
+  for (let i = 0; i < fileList!.length; i++) {
+    const file = fileList![i];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      fileArray.push({ name: file.name, preview: e.target!.result as string });
+      if (fileArray.length === fileList!.length) {
+        setVehcileReportingFiles(fileArray);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+};
+const handleVehicleGateInFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const fileList = event.target.files;
+  const fileArray: { name: string; preview: string }[] = [];
+
+  for (let i = 0; i < fileList!.length; i++) {
+    const file = fileList![i];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      fileArray.push({ name: file.name, preview: e.target!.result as string });
+      if (fileArray.length === fileList!.length) {
+        setVehcileGateInFiles(fileArray);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+};
+const handleVehicleLoadInFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const fileList = event.target.files;
+  const fileArray: { name: string; preview: string }[] = [];
+
+  for (let i = 0; i < fileList!.length; i++) {
+    const file = fileList![i];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      fileArray.push({ name: file.name, preview: e.target!.result as string });
+      if (fileArray.length === fileList!.length) {
+        setVehcileLoadInFiles(fileArray);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+};
+const handleVehicleLoadOutFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const fileList = event.target.files;
+  const fileArray: { name: string; preview: string }[] = [];
+
+  for (let i = 0; i < fileList!.length; i++) {
+    const file = fileList![i];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      fileArray.push({ name: file.name, preview: e.target!.result as string });
+      if (fileArray.length === fileList!.length) {
+        setVehcileLoadOutFiles(fileArray);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+};
+const handleVehicleGateOutFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const fileList = event.target.files;
+  const fileArray: { name: string; preview: string }[] = [];
+
+  for (let i = 0; i < fileList!.length; i++) {
+    const file = fileList![i];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      fileArray.push({ name: file.name, preview: e.target!.result as string });
+      if (fileArray.length === fileList!.length) {
+        setVehcileGateOutFiles(fileArray);
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+};
+const handleVehicleReportDeleteFile = (index: number) => {
+  const newFiles = [...vehcileReportingFiles];
+  newFiles.splice(index, 1);
+  setVehcileReportingFiles(newFiles);
+};
+const handleVehicleGateInDeleteFile = (index: number) => {
+  const newFiles = [...vehcileReportingFiles];
+  newFiles.splice(index, 1);
+  setVehcileReportingFiles(newFiles);
+};
+const handleVehicleLoadInDeleteFile = (index: number) => {
+  const newFiles = [...vehcileReportingFiles];
+  newFiles.splice(index, 1);
+  setVehcileReportingFiles(newFiles);
+};
+const handleVehicleLoadOutDeleteFile = (index: number) => {
+  const newFiles = [...vehcileReportingFiles];
+  newFiles.splice(index, 1);
+  setVehcileReportingFiles(newFiles);
+};
+const handleVehicleGateOutDeleteFile = (index: number) => {
+  const newFiles = [...vehcileReportingFiles];
+  newFiles.splice(index, 1);
+  setVehcileReportingFiles(newFiles);
+};
   return (
     <div className='flex flex-col w-full h-screen'>
       {/* <div className="w-screen h-[50%] z-10 absolute hidden " >
@@ -461,21 +619,38 @@ const [checklists4, setChecklists4] = useState([
                   <div className="vehicleImages bg-[#fcfcfc] p-[20px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>{shipment.SIN}</p>
+                        <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
                       </div>
-                      <div className="uploadSection flex gap-[32px]">
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
-
+                      <div className="uploadSection flex gap-[16px]">
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                              
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleReportFileChange}/>
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
-                        {/* <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
-                      <canvas className="container" ref={photoRef}></canvas>
-                    </div> */}
+                      </div>
+                      <div className="uploadSection flex gap-[16px]">
+                        
+                              
+                        {vehcileReportingFiles.map((file, index) => (
+          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+            {/* <img src={closeIcon} /> */}
+            <Image
+                        src={closeIcon}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
+                        onClick={() => handleVehicleReportDeleteFile(index)}
+                    />
+            <img key={file.name} src={file.preview} alt={file.name} />
+            </div>
+        ))}
+                        
                       </div>
                     </div>
                   </div>
@@ -548,13 +723,30 @@ const [checklists4, setChecklists4] = useState([
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateInFileChange}/>
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
-                        {/* <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
-                      <canvas className="container" ref={photoRef}></canvas>
-                    </div> */}
+                      </div>
+                      <div className="uploadSection flex gap-[16px]">
+                        
+                              
+                        {vehcileGateInFiles.map((file, index) => (
+          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+            {/* <img src={closeIcon} /> */}
+            <Image
+                        src={closeIcon}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
+                        onClick={() => handleVehicleGateInDeleteFile(index)}
+                    />
+            <img key={file.name} src={file.preview} alt={file.name} />
+            </div>
+        ))}
+                        
                       </div>
                     </div>
                   </div>
@@ -625,13 +817,30 @@ const [checklists4, setChecklists4] = useState([
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleLoadInFileChange}/>
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
-                        {/* <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
-                      <canvas className="container" ref={photoRef}></canvas>
-                    </div> */}
+                      </div>
+                      <div className="uploadSection flex gap-[16px]">
+                        
+                              
+                        {vehcileLoadInFiles.map((file, index) => (
+          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+            {/* <img src={closeIcon} /> */}
+            <Image
+                        src={closeIcon}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
+                        onClick={() => handleVehicleLoadInDeleteFile(index)}
+                    />
+            <img key={file.name} src={file.preview} alt={file.name} />
+            </div>
+        ))}
+                        
                       </div>
                     </div>
                   </div>
@@ -702,7 +911,8 @@ const [checklists4, setChecklists4] = useState([
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleLoadOutFileChange}/>
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
@@ -710,6 +920,20 @@ const [checklists4, setChecklists4] = useState([
                       <canvas className="container" ref={photoRef}></canvas>
                     </div> */}
                       </div>
+                      {vehcileLoadOutFiles.map((file, index) => (
+          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+            {/* <img src={closeIcon} /> */}
+            <Image
+                        src={closeIcon}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
+                        onClick={() => handleVehicleLoadOutDeleteFile(index)}
+                    />
+            <img key={file.name} src={file.preview} alt={file.name} />
+            </div>
+        ))}
                     </div>
                   </div>
                   <div className="checkList bg-[#fcfcfc] p-[20px]">
@@ -779,7 +1003,8 @@ const [checklists4, setChecklists4] = useState([
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateOutFileChange}/>
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
@@ -787,6 +1012,20 @@ const [checklists4, setChecklists4] = useState([
                       <canvas className="container" ref={photoRef}></canvas>
                     </div> */}
                       </div>
+                      {vehcileGateOutFiles.map((file, index) => (
+          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+            {/* <img src={closeIcon} /> */}
+            <Image
+                        src={closeIcon}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
+                        onClick={() => handleVehicleGateOutDeleteFile(index)}
+                    />
+            <img key={file.name} src={file.preview} alt={file.name} />
+            </div>
+        ))}
                     </div>
                   </div>
                   <div className="checkList bg-[#fcfcfc] p-[20px]">
