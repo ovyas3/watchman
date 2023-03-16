@@ -1,7 +1,7 @@
 'use client'
 import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials";
-import { post } from "../../../app/apiUtils";
+import { post } from "../../../app/utils/apiUtils";
 
 export const authOptions: NextAuthOptions = {
     // Configure one or more authentication providers

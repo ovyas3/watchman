@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '../pages/api/auth/[...nextauth]'
 import Login from './components/login'
 import { SessionProvider } from './components/sessionprovider';
-import HomePage from './page';
 
 export default async function RootLayout({
   children,
@@ -20,6 +19,7 @@ export default async function RootLayout({
           {!session ? (
           //  <div>{children}</div>
            <div className='flex flex-col justify-between p-[20px] min-h-screen w-screen bg-[#fcfcfc]'>
+            <div className='hidden '></div>
             <Login />
             </div>
           ) : (

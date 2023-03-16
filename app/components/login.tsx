@@ -28,8 +28,8 @@ function Login() {
     
   }
   return (
-    <div className="flex flex-col justify-between p-[20px] h-screen w-screen bg-[#fcfcfc]">
-    <div className='px-[20px]  flex flex-col w-screen h-screen gap-[48px]'>
+    <div className="flex flex-col justify-end p-[20px] h-screen w-screen bg-[#fcfcfc] gap-[100px] ">
+    <div className='px-[20px]  flex flex-col w-screen h-screen gap-[48px] justify-end '>
         <div className='top'>
           <div className="label text-[32px] text-[#1A1A1A] font-bold mt-[32px] ">
             Sign in
@@ -38,6 +38,8 @@ function Login() {
         <div className='center flex flex-col ' >
           <form className='flex flex-col gap-[16px]'>
         <TextField id="outlined-basic" label="Email" variant="outlined" value={username} onChange={e => setUsername(e.target.value)} />
+        {/* <TextField id="outlined-basic" label="Password" variant="outlined" value={password} onChange={e => setPassword(e.target.value)} /> */}
+        
         <FormControl sx={{ m: 1, width: '25ch' }} variant="outlined" className='m-[0] w-full'>
           <InputLabel htmlFor="outlined-adornment-password">Password</InputLabel>
           <OutlinedInput
@@ -70,8 +72,9 @@ function Login() {
             </div>
         </div>
     </div>
-    <div className="footer w-screen">
+    <div className="footer w-screen flex items-center justify-center">
       <Image src ={smartruck} 
+      width={500}
       alt="Powered by smartruck"
       />
     </div>

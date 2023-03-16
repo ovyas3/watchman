@@ -166,21 +166,6 @@ const [checklists4, setChecklists4] = useState([
 },
 ]);
 
-  // let videoRef = useRef(null);
-
-  // let photoRef = useRef(null)
-
-  // const getUserCamera = () => {
-  //   navigator.mediaDevices.getUserMedia({ video: true })
-  //     .then(stream => {
-  //       if (videoRef.current) {
-  //         setIsCameraAvailable(true);
-  //         videoRef.current.srcObject = stream;
-  //         videoRef.current.play();
-  //       }
-  //     });
-  // }
-
   const handleNext = () => {
     if (activeStep === steps.length - 1) {
       router.push('/completed');
@@ -309,7 +294,6 @@ const [checklists4, setChecklists4] = useState([
   };
 
   useEffect(() => {
-
     const getVehicleData = async () => {
     const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
       method: 'GET',
@@ -319,9 +303,10 @@ const [checklists4, setChecklists4] = useState([
       },
       });
       const data = await response.json();
+      if (data.statusCode === 200){
       const d = data.data.shipment;
       const security = data.data.securityCheck;
-      if (security.stage1.completed === true) {
+      if (security?.stage1?.completed === true) {
         const checks = security.stage1.checklist.map((c: { point: any; checked: any; }) => {
           return {
             point: c.point,
@@ -332,7 +317,7 @@ const [checklists4, setChecklists4] = useState([
         setReportingDate(security.stage1.completed_at);
         setActiveStep(0);
       } 
-      if (security.stage2.completed === true) {
+      if (security?.stage2?.completed === true) {
         const checks = security.stage2.checklist.map((c: { point: any; checked: any; }) => {
           return {
             point: c.point,
@@ -343,7 +328,7 @@ const [checklists4, setChecklists4] = useState([
         setGateInDate(security.stage2.completed_at);
         setActiveStep(1);
       } 
-      if (security.stage3.completed === true) {
+      if (security?.stage3?.completed === true) {
         const checks = security.stage3.checklist.map((c: { point: any; checked: any; }) => {
           return {
             point: c.point,
@@ -354,7 +339,7 @@ const [checklists4, setChecklists4] = useState([
         setLoadInDate(security.stage3.completed_at);
         setActiveStep(2);
       } 
-      if (security.stage4.completed === true) {
+      if (security?.stage4?.completed === true) {
         const checks = security.stage4.checklist.map((c: { point: any; checked: any; }) => {
           return {
             point: c.point,
@@ -365,7 +350,7 @@ const [checklists4, setChecklists4] = useState([
         setLoadOutDate(security.stage4.completed_at);
         setActiveStep(3);
       } 
-      if (security.stage5.completed === true) {
+      if (security?.stage5?.completed === true) {
         const checks = security.stage5.checklist.map((c: { point: any; checked: any; }) => {
           return {
             point: c.point,
@@ -379,8 +364,12 @@ const [checklists4, setChecklists4] = useState([
       setShipment(d);
       setSecurityCheck(security);
       return d;
+    } else {
+      // router.push('/');
+    }
     };
     getVehicleData();
+    
   }, [vehicleNo]);
 
 
@@ -541,17 +530,8 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
 };
   return (
     <div className='flex flex-col w-full h-screen'>
-      {/* <div className="w-screen h-[50%] z-10 absolute hidden " >
-
-        <video ref={videoRef} style={{ visibility: isCameraAvailable ? undefined : 'hidden' }}> </video>
-        {isCameraAvailable &&
-          <>
-            <Button onClick={handleStopClick}>Take Photo</Button>
-            <Button onClick={stopCamera}>Done</Button>
-
-          </>
-        }
-      </div> */}
+      
+      
       { shipment && <><div className='flex items-center justify-between bg-[#fcfcfc] h-[56px] w-full fixed z-[3]'>
         <Button
           startIcon={<ArrowBackOutlinedIcon />}
