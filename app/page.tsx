@@ -8,6 +8,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link'
 import { useSession } from 'next-auth/react';
 import { useSnackbar, SnackbarComponent } from './hooks/snackBar';
+import { toast, ToastContainer } from "react-toastify";
+
 function HomePage() {
     const { data: session } = useSession();
     const { showSnackbar, snackbarState } = useSnackbar();
@@ -22,7 +24,7 @@ const handleClick = () => {
     
     if (!vehicleNo){
     //  setValidVehicle(false);
-        showSnackbar('Enter a vehicle number!', 'error');
+        toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
     } else {
         // setValidVehicle(true);
     }
@@ -48,7 +50,8 @@ const handleClick = () => {
 
 
     return (
-        <div className='flex flex-col justify-between p-[20px] h-screen w-screen bg-[#fcfcfc]'>
+        <><ToastContainer />
+            <div className='flex flex-col justify-between p-[20px] h-screen w-screen bg-[#fcfcfc]'>
             <SnackbarComponent {...snackbarState} />
             <div className="top flex items-center justify-between w-full">
                 <div className="left">
@@ -60,8 +63,7 @@ const handleClick = () => {
                         src={logo}
                         alt=""
                         width={96}
-                        height={96}
-                    />
+                        height={96} />
                 </div>
             </div>
             <div className="bottom flex flex-col items-left justify-center w-full gap-[64px] mb-[56px]">
@@ -71,8 +73,7 @@ const handleClick = () => {
                     </div>
                     <div className="input w-full h-[48px]">
                         <input className='w-full h-full pl-[16px] border rounded-[6px] border-[#DFE3EB] outline-none' type="text" placeholder='KA 22 EP 9990'
-                            value={vehicleNo} onChange={handleOnChange}
-                        />
+                            value={vehicleNo} onChange={handleOnChange} />
                     </div>
                 </div>
                 {validVehicle ? (<Link
@@ -84,13 +85,13 @@ const handleClick = () => {
                     <div className="button flex items-center justify-center bg-[#2962FF] border rounded-[6px] w-full h-[48px]" onClick={handleClick}>
                         <button className='text-white'>CONTINUE</button>
                     </div>
-                    </Link>) : (
-                        <div className="button flex items-center justify-center bg-[#2962FF] border rounded-[6px] w-full h-[48px]" onClick={handleClick}>
+                </Link>) : (
+                    <div className="button flex items-center justify-center bg-[#2962FF] border rounded-[6px] w-full h-[48px]" onClick={handleClick}>
                         <button className='text-white'>CONTINUE</button>
                     </div>
-                    )}
+                )}
             </div>
-        </div>
+        </div></>
     )
 }
 
