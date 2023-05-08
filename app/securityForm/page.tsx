@@ -17,14 +17,15 @@ import { signOut } from 'next-auth/react';
 import CancelTwoToneIcon from '@mui/icons-material/CancelTwoTone';
 import CameraAltOutlinedIcon from '@mui/icons-material/CameraAltOutlined';
 import CollectionsOutlinedIcon from '@mui/icons-material/CollectionsOutlined';
-
+import { toast, ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 import Checkbox from '@mui/material/Checkbox';
 import VehicleGateIn from '../components/vehicleGateIn';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import closeIcon from '../../assets/popup_close_icon.svg';
 import Image from 'next/image'
-
+import { useSnackbar } from "../../lib/context/SnackbarProvider";
 type props = {
   searchParams: any,
 };
@@ -40,7 +41,7 @@ function SecurityForm({ searchParams }: props) {
   const [vehicleNo, setVehicleNo] = useState(searchParams.vehicleNo);
   const [shipment, setShipment] = useState<any>({});
   const [securityCheck, setSecurityCheck] = useState<any>({});
-
+  const addSnackbar = useSnackbar();
   const [activeStep, setActiveStep] = React.useState(0);
   const [reportingDate, setReportingDate] = React.useState<Dayjs | null>(
     dayjs(),
@@ -176,11 +177,13 @@ const [checklists4, setChecklists4] = useState([
     });
   };
   const handleSave = async () => {
-    let formData = new FormData();
-    let payload = {};
+    let images = false;
+    let formData:any = new FormData();
+    let payload: any = {};
     if (activeStep === 0) {
       for (let i = 0; i < vehcileReportingFiles.length; i++) {
         formData.append('images', dataURItoBlob(vehcileReportingFiles[i].preview), vehcileReportingFiles[i].name);
+        images = true;
       }
       formData.append('stage', 'stage1');
       formData.append('_id', securityCheck._id);
@@ -195,6 +198,7 @@ const [checklists4, setChecklists4] = useState([
     } else if (activeStep === 1) {
       for (let i = 0; i < vehcileGateInFiles.length; i++) {
         formData.append('images', dataURItoBlob(vehcileGateInFiles[i].preview), vehcileGateInFiles[i].name);
+        images = true;
       }
       formData.append('stage', 'stage2');
       formData.append('_id', securityCheck._id);
@@ -210,6 +214,7 @@ const [checklists4, setChecklists4] = useState([
     } else if (activeStep === 2) {
       for (let i = 0; i < vehcileLoadInFiles.length; i++) {
         formData.append('images', dataURItoBlob(vehcileLoadInFiles[i].preview), vehcileLoadInFiles[i].name);
+        images = true;
       }
       formData.append('stage', 'stage3');
       formData.append('_id', securityCheck._id);
@@ -225,6 +230,7 @@ const [checklists4, setChecklists4] = useState([
     } else if (activeStep === 3) {
       for (let i = 0; i < vehcileLoadOutFiles.length; i++) {
         formData.append('images', dataURItoBlob(vehcileLoadOutFiles[i].preview), vehcileLoadOutFiles[i].name);
+        images = true;
       }
       formData.append('stage', 'stage4');
       formData.append('_id', securityCheck._id);
@@ -240,6 +246,7 @@ const [checklists4, setChecklists4] = useState([
     } else if (activeStep === 4) {
       for (let i = 0; i < vehcileGateOutFiles.length; i++) {
         formData.append('images', dataURItoBlob(vehcileGateOutFiles[i].preview), vehcileGateOutFiles[i].name);
+        images = true;
       }
       formData.append('stage', 'stage5');
       formData.append('_id', securityCheck._id);
@@ -253,24 +260,59 @@ const [checklists4, setChecklists4] = useState([
         checklist: checklists4
       }
     }
-    const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
+    if (payload.checklist.filter(c => !c.checked).length === 0) {
+      const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+          'Content-Type': 'application/json',
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
         }
-    });
-    const data = await response.json();
-    const imageResponse = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage_images', {
+      });
+      const data = await response.json();
+      if (data.statusCode === 200) {
+        toast.success('🦄 Data saved!', {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        })
+      
+      } else {
+        toast.error(data.error.message, { hideProgressBar: true, autoClose: 2000, type: 'error' });
+      }
+    } else {
+      toast.error('Please check all checkpoints', { hideProgressBar: true, autoClose: 2000, type: 'error' });
+    }
+    if (images) {
+      const imageResponse = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage_images', {
         method: 'POST',
         body: formData,
         headers: {
-            'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
         }
-    });
-    const imageData = await imageResponse.json();
-    
+      });
+      const imageData = await imageResponse.json();
+      if (imageData.statusCode === 200) {
+        toast.success('Data Saved', {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        })
+      
+      } else {
+        toast.error(imageData.message, { hideProgressBar: true, autoClose: 2000, type: 'error' });
+      }
+    }
   }
   const dataURItoBlob = (dataURI: string) => {
     const byteString = atob(dataURI.split(',')[1]);
@@ -364,8 +406,9 @@ const [checklists4, setChecklists4] = useState([
       setShipment(d);
       setSecurityCheck(security);
       return d;
-    } else {
-      // router.push('/');
+    } else if (data.statusCode === 401) {
+        toast.error(data.error);
+        // signOut();
     }
     };
     getVehicleData();
@@ -529,10 +572,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
   setVehcileReportingFiles(newFiles);
 };
   return (
-    <div className='flex flex-col w-full h-screen'>
-      
-      
-      { shipment && <><div className='flex items-center justify-between bg-[#fcfcfc] h-[56px] w-full fixed z-[3]'>
+    <><ToastContainer /><div className='flex flex-col w-full h-screen'>
+
+
+      {shipment && <><div className='flex items-center justify-between bg-[#fcfcfc] h-[56px] w-full fixed z-[3]'>
         <Button
           startIcon={<ArrowBackOutlinedIcon />}
           color="inherit"
@@ -575,7 +618,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             <div className=' flex flex-col gap-[12px] relative top-[156px] '>
               {activeStep == 0 &&
                 <>
-                  <VehicleIdentity vehicleNo={vehicleNo} sin={shipment.SIN} soNumber={shipment.sale_order} materials={shipment.materials?.map((m: { name: any; }) => m.name).join(', ')} carrier={shipment?.carrier?.name}/>
+                  <VehicleIdentity vehicleNo={vehicleNo} sin={shipment.SIN} soNumber={shipment.sale_order} materials={shipment.materials?.map((m: { name: any; }) => m.name).join(', ')} carrier={shipment?.carrier?.name} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
                     <div className="body">
                       <div className="detailsSection">
@@ -603,34 +646,33 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                       <div className="uploadSection flex gap-[16px]">
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                              
+
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleReportFileChange}/>
+                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleReportFileChange} />
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
                       </div>
                       <div className="uploadSection flex gap-[16px]">
-                        
-                              
+
+
                         {vehcileReportingFiles.map((file, index) => (
-          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-            {/* <img src={closeIcon} /> */}
-            <Image
-                        src={closeIcon}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
-                        onClick={() => handleVehicleReportDeleteFile(index)}
-                    />
-            <img key={file.name} src={file.preview} alt={file.name} />
-            </div>
-        ))}
-                        
+                          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                            {/* <img src={closeIcon} /> */}
+                            <Image
+                              src={closeIcon}
+                              alt=""
+                              width={24}
+                              height={24}
+                              className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                              onClick={() => handleVehicleReportDeleteFile(index)} />
+                            <img key={file.name} src={file.preview} alt={file.name} />
+                          </div>
+                        ))}
+
                       </div>
                     </div>
                   </div>
@@ -661,7 +703,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
-                    <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
                 </>}
@@ -671,7 +713,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   {/* <DriverDetails /> */}
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
                     <div className="body">
-                    <div className="header">
+                      <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle gate in </p>
                       </div>
                       <div className="detailsSection">
@@ -704,29 +746,28 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateInFileChange}/>
+                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateInFileChange} />
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
                       </div>
                       <div className="uploadSection flex gap-[16px]">
-                        
-                              
+
+
                         {vehcileGateInFiles.map((file, index) => (
-          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-            {/* <img src={closeIcon} /> */}
-            <Image
-                        src={closeIcon}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
-                        onClick={() => handleVehicleGateInDeleteFile(index)}
-                    />
-            <img key={file.name} src={file.preview} alt={file.name} />
-            </div>
-        ))}
-                        
+                          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                            {/* <img src={closeIcon} /> */}
+                            <Image
+                              src={closeIcon}
+                              alt=""
+                              width={24}
+                              height={24}
+                              className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                              onClick={() => handleVehicleGateInDeleteFile(index)} />
+                            <img key={file.name} src={file.preview} alt={file.name} />
+                          </div>
+                        ))}
+
                       </div>
                     </div>
                   </div>
@@ -756,7 +797,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
-                    <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
                 </>}
@@ -798,29 +839,28 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleLoadInFileChange}/>
+                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleLoadInFileChange} />
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
                       </div>
                       <div className="uploadSection flex gap-[16px]">
-                        
-                              
+
+
                         {vehcileLoadInFiles.map((file, index) => (
-          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-            {/* <img src={closeIcon} /> */}
-            <Image
-                        src={closeIcon}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
-                        onClick={() => handleVehicleLoadInDeleteFile(index)}
-                    />
-            <img key={file.name} src={file.preview} alt={file.name} />
-            </div>
-        ))}
-                        
+                          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                            {/* <img src={closeIcon} /> */}
+                            <Image
+                              src={closeIcon}
+                              alt=""
+                              width={24}
+                              height={24}
+                              className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                              onClick={() => handleVehicleLoadInDeleteFile(index)} />
+                            <img key={file.name} src={file.preview} alt={file.name} />
+                          </div>
+                        ))}
+
                       </div>
                     </div>
                   </div>
@@ -850,7 +890,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
-                    <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
                 </>}
@@ -892,7 +932,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleLoadOutFileChange}/>
+                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleLoadOutFileChange} />
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
@@ -901,19 +941,18 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     </div> */}
                       </div>
                       {vehcileLoadOutFiles.map((file, index) => (
-          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-            {/* <img src={closeIcon} /> */}
-            <Image
-                        src={closeIcon}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
-                        onClick={() => handleVehicleLoadOutDeleteFile(index)}
-                    />
-            <img key={file.name} src={file.preview} alt={file.name} />
-            </div>
-        ))}
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                          {/* <img src={closeIcon} /> */}
+                          <Image
+                            src={closeIcon}
+                            alt=""
+                            width={24}
+                            height={24}
+                            className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                            onClick={() => handleVehicleLoadOutDeleteFile(index)} />
+                          <img key={file.name} src={file.preview} alt={file.name} />
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div className="checkList bg-[#fcfcfc] p-[20px]">
@@ -942,7 +981,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
-                    <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
                 </>}
@@ -984,7 +1023,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
                         </div>
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                        <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateOutFileChange}/>
+                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateOutFileChange} />
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                         </div>
@@ -993,19 +1032,18 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     </div> */}
                       </div>
                       {vehcileGateOutFiles.map((file, index) => (
-          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-            {/* <img src={closeIcon} /> */}
-            <Image
-                        src={closeIcon}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className='absolute top-[-10px] right-[-9px] text-[#131722] ' 
-                        onClick={() => handleVehicleGateOutDeleteFile(index)}
-                    />
-            <img key={file.name} src={file.preview} alt={file.name} />
-            </div>
-        ))}
+                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                          {/* <img src={closeIcon} /> */}
+                          <Image
+                            src={closeIcon}
+                            alt=""
+                            width={24}
+                            height={24}
+                            className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                            onClick={() => handleVehicleGateOutDeleteFile(index)} />
+                          <img key={file.name} src={file.preview} alt={file.name} />
+                        </div>
+                      ))}
                     </div>
                   </div>
                   <div className="checkList bg-[#fcfcfc] p-[20px]">
@@ -1034,7 +1072,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
-                    <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
                 </>}
@@ -1043,9 +1081,9 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
           )}
 
         </div></>}
-      
-      
-    </div>
+
+
+    </div></>
   );
 }
 
