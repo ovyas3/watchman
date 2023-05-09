@@ -260,7 +260,7 @@ const [checklists4, setChecklists4] = useState([
         checklist: checklists4
       }
     }
-    if (payload.checklist.filter(c => !c.checked).length === 0) {
+    if (payload.checklist.filter((c: any) => !c.checked).length === 0) {
       const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
