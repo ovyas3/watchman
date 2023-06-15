@@ -18,11 +18,13 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
         // handle verification
     }
     return (
-        <div className="bg-[#fcfcfc]">
-            <div className="body p-[20px] bg-[#fcfcfc] flex flex-col gap-[16px]">
+        <div className="bg-[#fcfcfc] w-[357px] rounded-[12px]">
+            <div className="body p-[20px] bg-[#fcfcfc] flex flex-col gap-[16px] rounded-[12px]">
                 <div className="header  ">
                     <p className='text-[#131722] text-[18px] font-bold'>Vehicle identity and reporting</p>
                 </div>
+                <div className="top">
+
                 <div className="detailsSection">
                     <div className="label">
                         Vehicle Number
@@ -52,6 +54,10 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
                         )}
                     </div>
                 </div>
+                </div>
+                <div className="bottom flex gap-[36px]">
+                    <div className="left">
+                        
                 <div className="detailsSection">
                     <div className="label">
                         Transporter Name
@@ -68,6 +74,9 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
                         {sin}
                     </div>
                 </div>
+                    </div>
+                    <div className="right">
+
                 <div className="detailsSection">
                     <div className="label">
                         SO No
@@ -82,6 +91,8 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
                     </div>
                     <div className="value">
                         {materials}
+                    </div>
+                </div>
                     </div>
                 </div>
             </div>
