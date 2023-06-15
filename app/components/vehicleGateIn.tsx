@@ -14,7 +14,8 @@ type props = {
 const Accordion = styled((props: AccordionProps) => (
     <MuiAccordion disableGutters elevation={0} square {...props} />
   ))(({ theme }) => ({
-    backgroundColor: '#FCFCFC'
+    backgroundColor: '#FCFCFC',
+    borderRadius: '12px'
   }));
   
 
@@ -34,7 +35,7 @@ function VehicleGateIn({ vehicleNo, driver, mobile }: props) {
         >
          <div className="header flex items-center gap-[4px]">
                     <p className='text-[#131722] text-[18px] font-bold'>Vehicle/Driver </p>
-                    {showVehicle && <p className='text-[12px]'> - {vehicleNo}</p>}
+                    {/* {showVehicle && <p className='text-[12px]'> - {vehicleNo}</p>} */}
                 </div>
         </AccordionSummary>
         <AccordionDetails>

@@ -43,6 +43,7 @@ function SecurityForm({ searchParams }: props) {
   const [securityCheck, setSecurityCheck] = useState<any>({});
   const addSnackbar = useSnackbar();
   const [activeStep, setActiveStep] = React.useState(0);
+  const [comletedSteps, setCompletedSteps] = React.useState([]);
   const [reportingDate, setReportingDate] = React.useState<Dayjs | null>(
     dayjs(),
   );
@@ -172,7 +173,7 @@ const [checklists4, setChecklists4] = useState([
       router.push('/completed');
     }
     setActiveStep((prevActiveStep) => {
-      
+      const step = prevActiveStep;
       return prevActiveStep + 1;
     });
   };
@@ -260,7 +261,7 @@ const [checklists4, setChecklists4] = useState([
         checklist: checklists4
       }
     }
-    if (payload.checklist.filter((c: any) => !c.checked).length === 0) {
+    if ((payload.checklist && payload.checklist.length && payload.checklist.filter((c: any) => !c.checked).length === 0) || activeStep === 0) {
       const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
@@ -572,10 +573,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
   setVehcileReportingFiles(newFiles);
 };
   return (
-    <><ToastContainer /><div className='flex flex-col w-full h-screen'>
+    <><ToastContainer /><div className='flex flex-col w-full h-screen bg-[#F0F3F9]'>
 
 
-      {shipment && <><div className='flex items-center justify-between bg-[#fcfcfc] h-[56px] w-full fixed z-[3]'>
+      {shipment && <><div className='flex items-center justify-between bg-[#F0F3F9] h-[56px] w-full fixed z-[3]'>
         <Button
           startIcon={<ArrowBackOutlinedIcon />}
           color="inherit"
@@ -597,7 +598,30 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                 optional?: React.ReactNode;
               } = {};
               return (
-                <Step key={label} {...stepProps}>
+                <Step key={label} {...stepProps}
+                sx={{
+          '& .MuiStepLabel-root .Mui-completed': {
+            color: '#18BE8A', // circle color (COMPLETED)
+                  },
+                  '& .css-z7uhs0-MuiStepConnector-line': {
+                    ...(activeStep > 3 && { borderColor: '#18BE8A' })
+                  },
+          '& .MuiStepLabel-label.Mui-completed.MuiStepLabel-alternativeLabel':
+            {
+              color: '#131722', // Just text label (COMPLETED)
+            },
+          '& .MuiStepLabel-root .Mui-active': {
+            color: '#18BE8A', // circle color (ACTIVE)
+          },
+          '& .MuiStepLabel-label.Mui-active.MuiStepLabel-alternativeLabel':
+            {
+              color: '#71747A', // Just text label (ACTIVE)
+            },
+          '& .MuiStepLabel-root .Mui-active .MuiStepIcon-text': {
+            fill: 'white', // circle's number (ACTIVE)
+          },
+        }}
+                >
                   <StepLabel {...labelProps}>  <p className='text-[10px]'>{label}</p> </StepLabel>
                 </Step>
               );
@@ -615,11 +639,37 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             </div>
           ) : (
 
-            <div className=' flex flex-col gap-[12px] relative top-[156px] '>
+            <div className=' flex flex-col gap-[12px] relative top-[156px] md:px-[80px] px-[24px]'>
               {activeStep == 0 &&
-                <>
+                  <>
+                  <div className="top md:flex md:flex-row-reverse gap-[24px]">
+                    <div className="right w-full">
+                  <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                    <div className="body flex flex-col gap-[16px]">
+                      <div className="header">
+                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                      </div>
+                      <div className="checkListSection">
+                        {checklists0.map((ch, i) => {
+                          return (<div className="row flex justify-between items-center" key={i}>
+                            <div className="point">
+                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
+                            </div>
+                            <div className="checkbox">
+                              <Checkbox
+                                checked={ch.checked}
+                                onChange={handleCheckboxChange0(i)} />
+                            </div>
+                          </div>);
+                        })}
+                      </div>
+
+                    </div>
+                  </div>
+                  </div>
+                  <div className="left flex flex-col gap-[16px] ">
                   <VehicleIdentity vehicleNo={vehicleNo} sin={shipment.SIN} soNumber={shipment.sale_order} materials={shipment.materials?.map((m: { name: any; }) => m.name).join(', ')} carrier={shipment?.carrier?.name} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="detailsSection">
                         <div className="label">
@@ -639,7 +689,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -676,29 +726,11 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="checkList bg-[#fcfcfc] p-[20px] hidden">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists0.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange0(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
-
-                    </div>
                   </div>
-                  <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  
+                  </div>
+                  <div className="bottom">
+                  <div className="buttons flex items-center justify-center gap-[16px] ">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
@@ -706,12 +738,38 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
+                  </div>
                 </>}
               {activeStep == 1 &&
-                <>
-                  <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                  <>
+                  <div className="top md:flex md:flex-row-reverse gap-[24px]">
+                    <div className="right w-full">
+                      <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                    <div className="body flex flex-col gap-[16px]">
+                      <div className="header">
+                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                      </div>
+                      <div className="checkListSection">
+                        {checklists1.map((ch, i) => {
+                          return (<div className="row flex justify-between items-center" key={i}>
+                            <div className="point">
+                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
+                            </div>
+                            <div className="checkbox">
+                              <Checkbox
+                                checked={ch.checked}
+                                onChange={handleCheckboxChange1(i)} />
+                            </div>
+                          </div>);
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                    </div>
+                    <div className="left flex flex-col gap-[16px]">
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
                   {/* <DriverDetails /> */}
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle gate in </p>
@@ -734,7 +792,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -771,28 +829,12 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="checkList bg-[#fcfcfc] p-[20px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists1.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange1(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
                     </div>
                   </div>
-                  <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  
+                  <div className="bottom">
+
+                  <div className="buttons flex items-center justify-center gap-[16px] ">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
@@ -800,11 +842,37 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
+                  </div>
                 </>}
               {activeStep == 2 &&
-                <>
-                  <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
+                  <>
+                  <div className="top md:flex md:flex-row-reverse gap-[24px]">
+                    <div className="right w-full">
+                      <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                    <div className="body flex flex-col gap-[16px]">
+                      <div className="header">
+                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                      </div>
+                      <div className="checkListSection">
+                        {checklists2.map((ch, i) => {
+                          return (<div className="row flex justify-between items-center" key={i}>
+                            <div className="point">
+                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
+                            </div>
+                            <div className="checkbox">
+                              <Checkbox
+                                checked={ch.checked}
+                                onChange={handleCheckboxChange2(i)} />
+                            </div>
+                          </div>);
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                    </div>
+                    <div className="left flex flex-col gap-[16px]">
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
                         <p className='text-[#131722] text-[18px] font-bold'>Loading in and billing activity</p>
@@ -827,7 +895,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -864,28 +932,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="checkList bg-[#fcfcfc] p-[20px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists2.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange2(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
                     </div>
                   </div>
-                  <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  <div className="bottom">
+                  <div className="buttons flex items-center justify-center gap-[16px] ">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
@@ -893,11 +943,39 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
+                  </div>
+                  
+                  
                 </>}
               {activeStep == 3 &&
-                <>
-                  <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
+                  <>
+                  <div className="top md:flex md:flex-row-reverse gap-[24px]">
+                    <div className="right w-full">
+                      <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                    <div className="body flex flex-col gap-[16px]">
+                      <div className="header">
+                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                      </div>
+                      <div className="checkListSection">
+                        {checklists3.map((ch, i) => {
+                          return (<div className="row flex justify-between items-center" key={i}>
+                            <div className="point">
+                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
+                            </div>
+                            <div className="checkbox">
+                              <Checkbox
+                                checked={ch.checked}
+                                onChange={handleCheckboxChange3(i)} />
+                            </div>
+                          </div>);
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                    </div>
+                    <div className="left flex flex-col gap-[16px]">
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
                         <p className='text-[#131722] text-[18px] font-bold'>Loading out and billing activity</p>
@@ -920,7 +998,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -955,28 +1033,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       ))}
                     </div>
                   </div>
-                  <div className="checkList bg-[#fcfcfc] p-[20px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists3.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange3(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
                     </div>
                   </div>
-                  <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  <div className="bottom">
+                        <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
@@ -984,11 +1044,40 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
+                  </div>
+                  
+                  
+                  
                 </>}
               {activeStep == 4 &&
-                <>
-                  <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]">
+                  <>
+                  <div className="top md:flex md:flex-row-reverse gap-[24px]">
+                    <div className="right w-full">
+                         <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                    <div className="body flex flex-col gap-[16px]">
+                      <div className="header">
+                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                      </div>
+                      <div className="checkListSection">
+                        {checklists4.map((ch, i) => {
+                          return (<div className="row flex justify-between items-center" key={i}>
+                            <div className="point">
+                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
+                            </div>
+                            <div className="checkbox">
+                              <Checkbox
+                                checked={ch.checked}
+                                onChange={handleCheckboxChange4(i)} />
+                            </div>
+                          </div>);
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                    </div>
+                    <div className="left flex flex-col gap-[16px]">
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle gate out activity</p>
@@ -1011,7 +1100,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -1046,28 +1135,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       ))}
                     </div>
                   </div>
-                  <div className="checkList bg-[#fcfcfc] p-[20px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists4.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange4(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
                     </div>
                   </div>
-                  <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  <div className="bottom">
+                        <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
@@ -1075,6 +1146,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
                   </div>
+                  </div>
+                  
+                 
+                  
                 </>}
 
             </div>
