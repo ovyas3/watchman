@@ -22,14 +22,25 @@ function HomePage() {
     const [validVehicle, setValidVehicle] = useState(false);
     // const router = useRouter();
     const [vehicleNo, setVehicleNo] = useState('');
-const handleClick = () => {
+const handleClick = async () => {
     
     if (!vehicleNo){
     //  setValidVehicle(false);
         toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
         // toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
     } else {
-        // setValidVehicle(true);
+        const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+      method: 'GET',
+      headers: {
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+          'Content-Type': 'application/json',
+      },
+      });
+        const data = await response.json();
+        if (data.statusCode == 500) { 
+            toast.error('Vehicle not found', { hideProgressBar: true, autoClose: 2000, type: 'error' });
+            setValidVehicle(false);
+        }
     }
   };
 

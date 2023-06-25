@@ -10,6 +10,9 @@ type props = {
   vehicleNo: string,
   driver: string,
   mobile: string,
+  trackingMethod: string,
+  lastLocation: string,
+  lastLocationAt: string,
 }
 const Accordion = styled((props: AccordionProps) => (
     <MuiAccordion disableGutters elevation={0} square {...props} />
@@ -19,7 +22,7 @@ const Accordion = styled((props: AccordionProps) => (
   }));
   
 
-function VehicleGateIn({ vehicleNo, driver, mobile }: props) {
+function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation, lastLocationAt }: props) {
     const [showVehicle, setShowVehicle] = useState(true);
     const handleIconClick = () => {
         setShowVehicle(!showVehicle);
@@ -39,8 +42,9 @@ function VehicleGateIn({ vehicleNo, driver, mobile }: props) {
                 </div>
         </AccordionSummary>
         <AccordionDetails>
-            <div className="flex flex-col gap-[16px]">
-        <div className="detailsSection">
+          <div className="flex gap-[16px]">
+            <div className="left flex flex-col gap-[16px] w-[50%]">
+              <div className="detailsSection">
                     <div className="label">
                         Vehicle Number
                     </div>
@@ -69,6 +73,39 @@ function VehicleGateIn({ vehicleNo, driver, mobile }: props) {
                         {mobile}
                     </div>
                 </div>
+            </div>
+            <div className="right flex flex-col gap-[16px] w-[50%]">
+
+        <div className="detailsSection">
+                    <div className="label">
+                        Tracking Method
+                    </div>
+                    <div className="value flex gap-[8px] items-center ">
+                        
+                            {trackingMethod}
+                        
+                        
+                    </div>
+                </div>
+                
+                
+                <div className="detailsSection">
+                    <div className="label">
+                        Last Location At
+                    </div>
+                    <div className="value">
+                        {lastLocationAt}
+                    </div>
+                </div>
+                <div className="detailsSection">
+                    <div className="label">
+                        Last Location
+                    </div>
+                    <div className="value">
+                        {lastLocation}
+                    </div>
+                </div>
+            </div>
                 </div>
         </AccordionDetails>
       </Accordion>

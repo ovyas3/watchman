@@ -56,13 +56,13 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
                 </div>
                 </div>
                 <div className="bottom flex gap-[36px]">
-                    <div className="left">
+                    <div className="left w-[50%]">
                         
                 <div className="detailsSection">
                     <div className="label">
                         Transporter Name
                     </div>
-                    <div className="value">
+                    <div className="value whitespace-nowrap	overflow-hidden	text-ellipsis	">
                         {carrier}
                     </div>
                 </div>
@@ -75,7 +75,7 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
                     </div>
                 </div>
                     </div>
-                    <div className="right">
+                    <div className="right w-[50%]">
 
                 <div className="detailsSection">
                     <div className="label">
