@@ -102,7 +102,7 @@ function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation
                         Last Location
                     </div>
                     <div className="value">
-                        {lastLocation}
+                        {lastLocation.replace('Unnamed Road,', '')}
                     </div>
                 </div>
             </div>

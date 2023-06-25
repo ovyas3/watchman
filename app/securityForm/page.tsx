@@ -979,7 +979,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
