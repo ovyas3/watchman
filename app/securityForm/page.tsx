@@ -26,6 +26,7 @@ import { useSession } from 'next-auth/react';
 import closeIcon from '../../assets/popup_close_icon.svg';
 import Image from 'next/image'
 import { useSnackbar } from "../../lib/context/SnackbarProvider";
+import { DateTime } from 'luxon';
 type props = {
   searchParams: any,
 };
@@ -407,9 +408,12 @@ const [checklists4, setChecklists4] = useState([
       setShipment(d);
       setSecurityCheck(security);
       return d;
-    } else if (data.statusCode === 401) {
+      } else if (data.statusCode === 401) {
+        
         toast.error(data.error);
         // signOut();
+      } else {
+        toast.error('No Vehicle found, please logout and try again');
     }
     };
     getVehicleData();
@@ -767,7 +771,8 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      
                   {/* <DriverDetails /> */}
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
@@ -871,7 +876,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
@@ -974,7 +979,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
@@ -1076,7 +1081,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header">
