@@ -5,7 +5,7 @@
 
 export async function post(url: any, payload: any) {
     
-    const response = await fetch('https://dev-api.instavans.com/api/thor/' + url, {
+    const response = await fetch('https://live-api.instavans.com/api/thor/' + url, {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {

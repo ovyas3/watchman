@@ -20,7 +20,7 @@ body{
         @apply text-[#42454E] text-[14px] font-[600]
     }
     .button{
-        @apply flex items-center justify-center bg-[#2962FF] border rounded-[6px] w-full h-[48px]
+        @apply flex items-center justify-center bg-[#2962FF] border rounded-[6px] w-[152px] h-[44px]
     }
     .buttonLabel{
         @apply text-[14px] font-semibold text-white
