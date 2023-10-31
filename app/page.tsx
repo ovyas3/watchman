@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react';
 import { useSnackbar, SnackbarComponent } from './hooks/snackBar';
 import { toast, ToastContainer } from "react-toastify";
+import { signOut } from 'next-auth/react';
 import 'react-toastify/dist/ReactToastify.css';
 function HomePage() {
     const { data: session } = useSession();
@@ -29,7 +30,7 @@ const handleClick = async () => {
         toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
         // toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
     } else {
-        const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+        const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
       method: 'GET',
       headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -58,6 +59,20 @@ const handleClick = async () => {
         }
     })
 
+     const handleLogout = async () => {
+    // await put('shipper_user/sign_out', { from: 'web' });
+    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    method: 'PUT',
+    headers: {
+        'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+        'Content-Type': 'application/json',
+    }
+});
+    await signOut({ redirect: true, callbackUrl: '/' });
+    
+    window.localStorage.removeItem('nextauth.session-token');
+}
+
 
 
 
@@ -65,6 +80,7 @@ const handleClick = async () => {
 
     return (
         <><ToastContainer />
+            
             <div className='md:flex md:flex-row-reverse justify-between gap-[80px] p-[20px] h-screen w-screen bg-[#fcfcfc]'>
                 <SnackbarComponent {...snackbarState} />
                 <div className="bodyRight flex items-center justify-center flex-[0.6] bg-[#F0F3F9]">
@@ -80,7 +96,18 @@ const handleClick = async () => {
                 
             </div> */}
             <div className="bottom md:mt-[64px] flex flex-col items-left justify-center w-full gap-[56px]">
-                <div className="vehicleDetails flex flex-col gap-[64px]">
+                        <div className="vehicleDetails flex flex-col gap-[64px]">
+                            <div 
+                                className='flex items-center justify-end w-full'
+          onClick={handleLogout}>
+                                <div className="logout text-[#fafafa] text-[12px] w-[84px] h-[36px]
+         flex items-center justify-center bg-[#E24D65] rounded
+         cursor-pointer hover:bg-[#E45E74]
+         transition duration-150 ease-out hover:ease-in
+         ">
+                                    Log out
+          </div>
+        </div>
                     <div className="label text-[#131722] text-[32px] font-bold">
                         Vehicle security check
                     </div>
@@ -122,7 +149,8 @@ const handleClick = async () => {
                     <div className="button flex items-center justify-center bg-[#2962FF] border rounded-[6px] w-[152px] h-[56px]" onClick={handleClick}>
                         <button className='text-white'>CONTINUE</button>
                     </div>
-                )}
+                        )}
+                       
                     </div>
                 </div>
                 

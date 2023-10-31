@@ -41,6 +41,9 @@ function SecurityForm({ searchParams }: props) {
   const { data: session } = useSession();
   const [vehicleNo, setVehicleNo] = useState(searchParams.vehicleNo);
   const [shipment, setShipment] = useState<any>({});
+  const [trackingMethod, setTrackingMethod] = useState('');
+  const [lastLocation, setLastLocation] = useState('');
+  const [lastLocationAt, setLastLocationAt] = useState('');
   const [securityCheck, setSecurityCheck] = useState<any>({});
   const addSnackbar = useSnackbar();
   const [activeStep, setActiveStep] = React.useState(0);
@@ -178,6 +181,9 @@ const [checklists4, setChecklists4] = useState([
       return prevActiveStep + 1;
     });
   };
+  const handleNewVehicle = () => {
+    router.push('/');
+  }
   const handleSave = async () => {
     let images = false;
     let formData:any = new FormData();
@@ -263,7 +269,7 @@ const [checklists4, setChecklists4] = useState([
       }
     }
     if ((payload.checklist && payload.checklist.length && payload.checklist.filter((c: any) => !c.checked).length === 0) || activeStep === 0) {
-      const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
+      const response = await fetch('https://live-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -291,7 +297,7 @@ const [checklists4, setChecklists4] = useState([
       toast.error('Please check all checkpoints', { hideProgressBar: true, autoClose: 2000, type: 'error' });
     }
     if (images) {
-      const imageResponse = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage_images', {
+      const imageResponse = await fetch('https://live-api.instavans.com/api/thor/security/save_stage_images', {
         method: 'POST',
         body: formData,
         headers: {
@@ -339,7 +345,7 @@ const [checklists4, setChecklists4] = useState([
 
   useEffect(() => {
     const getVehicleData = async () => {
-    const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+    const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
       method: 'GET',
       headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -348,7 +354,11 @@ const [checklists4, setChecklists4] = useState([
       });
       const data = await response.json();
       if (data.statusCode === 200){
-      const d = data.data.shipment;
+        const d = data.data.shipment;
+        const trackingMethod = d.trip_tracker && d.trip_tracker.methods && d.trip_tracker.methods.length && d.trip_tracker.methods[0] || 'N/A';
+        const lastLocation = d.trip_tracker && d.trip_tracker.last_location.address && d.trip_tracker.last_location.address || 'N/A';
+        const lastLocationAttr = d.trip_tracker && d.trip_tracker.last_location_at && lastLocationAt;
+
       const security = data.data.securityCheck;
       if (security?.stage1?.completed === true) {
         const checks = security.stage1.checklist.map((c: { point: any; checked: any; }) => {
@@ -360,6 +370,10 @@ const [checklists4, setChecklists4] = useState([
         setChecklists0(checks);
         setReportingDate(security.stage1.completed_at);
         setActiveStep(0);
+        if (security.stage1.images?.length) {
+          const newImages = security.stage1.images.map((i: any) => ({ name: i, preview: i }));
+          setVehcileReportingFiles(newImages);
+        }
       } 
       if (security?.stage2?.completed === true) {
         const checks = security.stage2.checklist.map((c: { point: any; checked: any; }) => {
@@ -371,6 +385,10 @@ const [checklists4, setChecklists4] = useState([
         setChecklists1(checks);
         setGateInDate(security.stage2.completed_at);
         setActiveStep(1);
+        if (security.stage2.images?.length) {
+            const newImages = security.stage2.images.map((i: any) => ({ name: i, preview: i }));
+          setVehcileGateInFiles(newImages);
+        }
       } 
       if (security?.stage3?.completed === true) {
         const checks = security.stage3.checklist.map((c: { point: any; checked: any; }) => {
@@ -382,6 +400,10 @@ const [checklists4, setChecklists4] = useState([
         setChecklists2(checks);
         setLoadInDate(security.stage3.completed_at);
         setActiveStep(2);
+        if (security.stage3.images?.length) {
+          const newImages = security.stage3.images.map((i: any) => ({ name: i, preview: i }));
+          setVehcileLoadInFiles(newImages);
+        }
       } 
       if (security?.stage4?.completed === true) {
         const checks = security.stage4.checklist.map((c: { point: any; checked: any; }) => {
@@ -393,6 +415,10 @@ const [checklists4, setChecklists4] = useState([
         setChecklists3(checks);
         setLoadOutDate(security.stage4.completed_at);
         setActiveStep(3);
+        if (security.stage4.images?.length) {
+          const newImages = security.stage4.images.map((i: any) => ({ name: i, preview: i }));
+          setVehcileLoadOutFiles(newImages);
+        }
       } 
       if (security?.stage5?.completed === true) {
         const checks = security.stage5.checklist.map((c: { point: any; checked: any; }) => {
@@ -404,8 +430,15 @@ const [checklists4, setChecklists4] = useState([
         setChecklists4(checks);
         setGateOutDate(security.stage5.completed_at);
         setActiveStep(4);
+         if (security.stage5.images?.length) {
+          const newImages = security.stage5.images.map((i: any) => ({ name: i, preview: i }));
+          setVehcileLoadOutFiles(newImages);
+        }
       }
-      setShipment(d);
+        setShipment(d);
+        setTrackingMethod(trackingMethod);
+        setLastLocation(lastLocation);
+        setLastLocationAt(lastLocationAt);
       setSecurityCheck(security);
       return d;
       } else if (data.statusCode === 401) {
@@ -449,7 +482,7 @@ const [checklists4, setChecklists4] = useState([
   const router = useRouter();
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://dev-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -557,30 +590,30 @@ const handleVehicleReportDeleteFile = (index: number) => {
   setVehcileReportingFiles(newFiles);
 };
 const handleVehicleGateInDeleteFile = (index: number) => {
-  const newFiles = [...vehcileReportingFiles];
+  const newFiles = [...vehcileGateInFiles];
   newFiles.splice(index, 1);
-  setVehcileReportingFiles(newFiles);
+  setVehcileGateInFiles(newFiles);
 };
 const handleVehicleLoadInDeleteFile = (index: number) => {
-  const newFiles = [...vehcileReportingFiles];
+  const newFiles = [...vehcileLoadInFiles];
   newFiles.splice(index, 1);
-  setVehcileReportingFiles(newFiles);
+  setVehcileLoadInFiles(newFiles);
 };
 const handleVehicleLoadOutDeleteFile = (index: number) => {
-  const newFiles = [...vehcileReportingFiles];
+  const newFiles = [...vehcileLoadOutFiles];
   newFiles.splice(index, 1);
-  setVehcileReportingFiles(newFiles);
+  setVehcileLoadOutFiles(newFiles);
 };
 const handleVehicleGateOutDeleteFile = (index: number) => {
-  const newFiles = [...vehcileReportingFiles];
+  const newFiles = [...vehcileGateOutFiles];
   newFiles.splice(index, 1);
-  setVehcileReportingFiles(newFiles);
+  setVehcileGateOutFiles(newFiles);
 };
   return (
     <><ToastContainer /><div className='flex flex-col w-full h-screen bg-[#F0F3F9]'>
 
 
-      {shipment && <><div className='flex items-center justify-between bg-[#F0F3F9] h-[56px] w-full fixed z-[3]'>
+      {shipment && <><div className='flex items-center justify-between bg-[#F0F3F9] h-[56px] w-full fixed z-[3] p-[10px] box-border'>
         <Button
           startIcon={<ArrowBackOutlinedIcon />}
           color="inherit"
@@ -590,7 +623,12 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
         >
           Back
         </Button>
-        <div className="logout text-[#42454E] text-[12px] pr-[12px]" onClick={handleLogout}>
+        <div className="logout text-[#fafafa] text-[12px] w-[84px] h-[36px]
+         flex items-center justify-center bg-[#E24D65] rounded
+         cursor-pointer hover:bg-[#E45E74]
+         transition duration-150 ease-out hover:ease-in
+         "
+          onClick={handleLogout}>
           Log out
         </div>
 
@@ -714,7 +752,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
 
 
                         {vehcileReportingFiles.map((file, index) => (
-                          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                          <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
                             {/* <img src={closeIcon} /> */}
                             <Image
                               src={closeIcon}
@@ -733,14 +771,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                   
                   </div>
-                  <div className="bottom">
-                  <div className="buttons flex items-center justify-center gap-[16px] ">
+                  <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+                    
+                    <div className="buttons flex items-center justify-between w-full ">
+                     <div className="left">
+                      <div onClick={handleNewVehicle} className="button">
+                      <button className='text-white'>NEW VEHICLE</button>
+                    </div>
+                      </div>
+                      <div className="right flex items-center justify-end w-full">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
+                      </div>
                   </div>
                   </div>
                 </>}
@@ -771,7 +817,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
                       
                   {/* <DriverDetails /> */}
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
@@ -818,7 +864,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
 
 
                         {vehcileGateInFiles.map((file, index) => (
-                          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                          <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
                             {/* <img src={closeIcon} /> */}
                             <Image
                               src={closeIcon}
@@ -837,15 +883,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     </div>
                   </div>
                   
-                  <div className="bottom">
-
-                  <div className="buttons flex items-center justify-center gap-[16px] ">
+                  <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+                    
+                    <div className="buttons flex items-center justify-between w-full ">
+                     <div className="left">
+                      <div onClick={handleNewVehicle} className="button">
+                      <button className='text-white'>NEW VEHICLE</button>
+                    </div>
+                      </div>
+                      <div className="right flex items-center justify-end w-full">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
+                      </div>
                   </div>
                   </div>
                 </>}
@@ -876,7 +929,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
@@ -921,7 +974,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
 
 
                         {vehcileLoadInFiles.map((file, index) => (
-                          <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                          <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
                             {/* <img src={closeIcon} /> */}
                             <Image
                               src={closeIcon}
@@ -939,14 +992,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                   </div>
-                  <div className="bottom">
-                  <div className="buttons flex items-center justify-center gap-[16px] ">
+                  <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+                    
+                    <div className="buttons flex items-center justify-between w-full ">
+                     <div className="left">
+                      <div onClick={handleNewVehicle} className="button">
+                      <button className='text-white'>NEW VEHICLE</button>
+                    </div>
+                      </div>
+                      <div className="right flex items-center justify-end w-full">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
+                      </div>
                   </div>
                   </div>
                   
@@ -979,7 +1040,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
@@ -1024,7 +1085,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     </div> */}
                       </div>
                       {vehcileLoadOutFiles.map((file, index) => (
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
                           {/* <img src={closeIcon} /> */}
                           <Image
                             src={closeIcon}
@@ -1040,14 +1101,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                   </div>
-                  <div className="bottom">
-                        <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+                    
+                    <div className="buttons flex items-center justify-between w-full ">
+                     <div className="left">
+                      <div onClick={handleNewVehicle} className="button">
+                      <button className='text-white'>NEW VEHICLE</button>
+                    </div>
+                      </div>
+                      <div className="right flex items-center justify-end w-full">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
+                      </div>
                   </div>
                   </div>
                   
@@ -1081,7 +1150,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={shipment.trip_tracker?.methods[0]} lastLocation={shipment.trip_tracker?.last_location_address} lastLocationAt={DateTime.fromISO(shipment.trip_tracker.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
                     <div className="body">
                       <div className="header">
@@ -1126,7 +1195,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     </div> */}
                       </div>
                       {vehcileGateOutFiles.map((file, index) => (
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
                           {/* <img src={closeIcon} /> */}
                           <Image
                             src={closeIcon}
@@ -1142,14 +1211,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                   </div>
-                  <div className="bottom">
-                        <div className="buttons flex items-center justify-center gap-[16px] px-[20px] pb-[20px] ">
+                  <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+                    
+                    <div className="buttons flex items-center justify-between w-full ">
+                     <div className="left">
+                      <div onClick={handleNewVehicle} className="button">
+                      <button className='text-white'>NEW VEHICLE</button>
+                    </div>
+                      </div>
+                      <div className="right flex items-center justify-end w-full">
                     <div onClick={handleSave} className="button">
                       <button className='text-white'>SAVE</button>
                     </div>
                     <div onClick={handleNext} className="button">
                       <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
                     </div>
+                      </div>
                   </div>
                   </div>
                   

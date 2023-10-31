@@ -29,7 +29,7 @@ function Login() {
   }
   return (
     <div className="flex flex-col justify-end p-[20px] h-screen w-screen bg-[#fcfcfc] gap-[100px] ">
-    <div className='px-[20px]  flex flex-col w-screen h-screen gap-[48px] justify-end '>
+    <div className='px-[20px]  flex flex-col h-screen gap-[48px] justify-end '>
         <div className='top'>
           <div className="label text-[32px] text-[#1A1A1A] font-bold mt-[32px] ">
             Sign in

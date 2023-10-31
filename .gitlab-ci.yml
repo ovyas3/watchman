@@ -1,0 +1,28 @@
+image: tk120404/node:12.14.1
+
+variables:
+  GIT_STRATEGY: fetch
+  GIT_SUBMODULE_STRATEGY: recursive
+
+dev_build:
+  tags:
+    - peacock-dev
+  environment:
+    name: dev
+  stage: build
+  script:
+    - npm install
+    - echo $devEnvKey | base64 -d > devEnvKey.pem
+    - echo $devFingerPrint > ~/.ssh/known_hosts
+    - chmod 400 devEnvKey.pem
+    - zip -qq -r $CI_JOB_ID.zip ./ -x devEnvKey.pem
+    - scp -i devEnvKey.pem $CI_JOB_ID.zip ubuntu@live-api.instavans.com:/home/ubuntu/milkyway/packages/peacock-$CI_JOB_ID.zip
+    - ssh -t -t -i devEnvKey.pem  ubuntu@live-api.instavans.com << EOF
+    - rm -rf /home/ubuntu/milkyway/peacock/*
+    - cd /home/ubuntu/milkyway/peacock
+    - cp /home/ubuntu/milkyway/packages/peacock-$CI_JOB_ID.zip .
+    - unzip -qq -o peacock-$CI_JOB_ID.zip
+    - rm -rf peacock-$CI_JOB_ID.zip
+    - rm /home/ubuntu/milkyway/packages/peacock-$CI_JOB_ID.zip
+    - pm2 restart peacock
+    - exit
