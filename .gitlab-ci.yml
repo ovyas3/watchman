@@ -11,6 +11,7 @@ dev_build:
     name: dev
   stage: build
   script:
+    - echo "watchman project"
     - npm install
     - echo $devEnvKey | base64 -d > devEnvKey.pem
     - echo $devFingerPrint > ~/.ssh/known_hosts
