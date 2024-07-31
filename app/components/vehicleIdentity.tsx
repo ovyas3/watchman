@@ -18,7 +18,7 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
         // handle verification
     }
     return (
-        <div className="bg-[#fcfcfc] w-[357px] rounded-[12px]">
+        <div className="bg-[#fcfcfc] rounded-[12px]">
             <div className="body p-[20px] bg-[#fcfcfc] flex flex-col gap-[16px] rounded-[12px]">
                 <div className="header  ">
                     <p className='text-[#131722] text-[18px] font-bold'>Vehicle identity and reporting</p>

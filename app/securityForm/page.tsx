@@ -4,7 +4,7 @@ import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
-import { Typography } from '@mui/material';
+import { FormControlLabel, Grid, IconButton, Typography } from '@mui/material';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import VehicleIdentity from '../components/vehicleIdentity';
 import DriverDetails from '../components/driverDetails';
@@ -27,9 +27,31 @@ import closeIcon from '../../assets/popup_close_icon.svg';
 import Image from 'next/image'
 import { useSnackbar } from "../../lib/context/SnackbarProvider";
 import { DateTime } from 'luxon';
+import CameraModal from './CameraModal';
+
 type props = {
   searchParams: any,
 };
+
+interface SubItem {
+  name: string;
+  dropdown: string;
+}
+
+interface ChecklistItem {
+  point: string;
+  dropdown?: string;
+  images?: Record<string, string>;
+  image?: string;
+  inputValue?: string;
+  dropdownHighlighted?: boolean;
+  checked?: boolean;
+  isAutomatic?: boolean;
+  subItems?: SubItem[];
+  validityDate?: string;
+  validityEndDate?: string; 
+  dropdownDisabled?: boolean;
+}
 const steps = [
   'Vehicle Identity And Reporting',
   'Vehicle Gate In',
@@ -47,7 +69,6 @@ function SecurityForm({ searchParams }: props) {
   const [securityCheck, setSecurityCheck] = useState<any>({});
   const addSnackbar = useSnackbar();
   const [activeStep, setActiveStep] = React.useState(0);
-  const [comletedSteps, setCompletedSteps] = React.useState([]);
   const [reportingDate, setReportingDate] = React.useState<Dayjs | null>(
     dayjs(),
   );
@@ -69,110 +90,242 @@ function SecurityForm({ searchParams }: props) {
   const [vehcileLoadOutFiles, setVehcileLoadOutFiles] = useState<{ name: string; preview: string }[]>([]);
   const [vehcileGateOutFiles, setVehcileGateOutFiles] = useState<{ name: string; preview: string }[]>([]);
 
-  const [checklists0, setChecklists0] = useState([
+  const [showCamera, setShowCamera] = useState<boolean>(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number | null>(null);
+  const [currentImagePart, setCurrentImagePart] = useState<string | null>(null);
+  const [currentChecklistIndex, setCurrentChecklistIndex] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [submittedImages, setSubmittedImages] = useState<Record<string, boolean>>({});
+
+  const [checklists0, setChecklists0] = useState<ChecklistItem[]>([
     {
-    point: 'Pollution certificate is valid?',
-    checked: false
+    point: 'Vehicle Body is in Good Condition or Not ?',
+    dropdown: '',
+    images: {
+      'Floor Body': '',
+      'Floor': '',
+      'Left': '',
+      'Right': '',
+      'Rear': ''
+    },
+    dropdownHighlighted: false,
+    dropdownDisabled: true,
   }, 
   {
-    point: 'Tarpaulin in good Condition?',
-    checked: false
+    point: 'Vehicle is equipped with 3 Tarpaulins or not ?',
+    dropdown: '',
+    image: ''
   }, 
   {
-    point: 'Vehicle Body in good Condition?',
-    checked: false
+    point: 'Tarpaulins are in Good Condition or Not ? (Only Stitchless Tarpaulins)',
+    dropdown: '',
+    image: ''
   },
   {
-    point: 'Fitness certificate is valid?',
-    checked: false
+    point: 'Pollution Certificate is Valid ?',
+    dropdown: '',
+    image: '',
+    inputValue: '',
+    dropdownHighlighted: false,
+    dropdownDisabled: true
   },
-]);
-const [checklists1, setChecklists1] = useState([
   {
-  point: 'Pollution certificate is valid?',
-  checked: false
-}, 
-{
-  point: 'Tarpaulin in good Condition?',
-  checked: false
-}, 
-{
-  point: 'Vehicle Body in good Condition?',
-  checked: false
-},
-{
-  point: 'Fitness certificate is valid?',
-  checked: false
-},
-]);
-const [checklists2, setChecklists2] = useState([
+    point: 'Fitness Certificate is Valid ?',
+    dropdown: '',
+    image: '',
+    inputValue: '',
+    dropdownHighlighted: false,
+    dropdownDisabled: true
+  },
   {
-  point: 'Has the correct and valid material, which is not expired, been brought to the loading point as per the customer\'s requirement?',
-  checked: false
-}, 
-{
-  point: 'Has the vehicle\'s hygiene been checked, and has tarpaulin been laid inside the truck?',
-  checked: false
-}, 
-{
-  point: 'Has the tarpaulin covered the entire bottom surface of the truck before loading activity?',
-  checked: false
-},
-{
-  point: 'Is the quantity of material being loaded matching the quantity mentioned in the pick-up list?',
-  checked: false
-},
-{
-  point: 'Is the stacking of the material meeting the standard stacking plan?',
-  checked: false
-},
-]);
-const [checklists3, setChecklists3] = useState([
+    point: 'Vehicle Carrying Capacity in Kgs',
+    inputValue: '',
+    image: ''
+  },
   {
-  point: 'Is Hygiene Of the physical condition and appearance of the bags good during loading?',
-  checked: false
+    point: 'Driver License No.',
+    inputValue: ''
+  },
+  {
+    point: 'Driver License Validity End Date',
+    inputValue: ''
+  }
+]);
+const [checklists1, setChecklists1] = useState<ChecklistItem[]>([
+  {
+    point: 'Time Stamp of gate In',
+    checked: false,
+    inputValue: new Date().toLocaleString(), 
+  }
+]);
+const [checklists2, setChecklists2] = useState<ChecklistItem[]>([
+  {
+  point: 'Vehicle Body is in Good Condition or Not ?',
+  dropdown: '',
+  images: {
+    'Floor Body': '',
+    'Floor': '',
+    'Left': '',
+    'Right': '',
+    'Rear': ''
+  },
+  dropdownHighlighted: false,
+  dropdownDisabled: true
 }, 
 {
-  point: 'Is truck sealing done properly?',
-  checked: false
+  point: 'Has the Tarpaulin covered the entire bottom surface of the Truck before loading commencement ?',
+  dropdown: '',
+  images: {
+    'Photo 1': '',
+    'Photo 2': ''
+  },
+  dropdownHighlighted: false,
+  dropdownDisabled: true
 }, 
 {
-  point: 'Is cross verification done for the required documents (with organization seal, Authorization sign,e-way bill etc) along with Vehicle?',
-  checked: false
+  point: 'Pick Up Slip Weight and Vehicle Passing weight cross check done ? (In Kgs)',
+  dropdown: '',
+  dropdownHighlighted: false,
+  inputValue: ''
+}
+]);
+const [checklists3, setChecklists3] = useState<ChecklistItem[]>([
+  {
+  point: 'Layer Wise Loading and Stuffing done as per Stacking Plan ?',
+  dropdown: '',
+  images: {
+    'First Layer': '',
+    'Second Layer': '',
+    'Third Layer': '',
+    'Fourth Layer': '',
+    'Post Loading': ''
+  },
+  dropdownHighlighted: false,
+  dropdownDisabled: true
+}, 
+{
+  point: 'Is the Quantity of Material loaded matching the Quantity in Pick up List ?',
+  dropdown: ''
+}, 
+{
+  point: 'Is truck Sealing done or not and Seal No. (If Available) ?',
+  dropdown: '',
+  image: '',
+  inputValue: '',
+  dropdownHighlighted: false,
+  dropdownDisabled: true
 },
 {
-  point: 'Cross Check - Acceptance of Total Loading Quality & Quantity',
-  checked: false
+  point: 'Material Loaded Weight entry in Kgs and Weigh Bridge Slip (If Available)',
+  inputValue: '',
+      image: ''
 },
 {
-  point: 'Billed Quantity and Loading Quantity Cross Check responsibility',
-  checked: false
+  point: "List of Documents Provided or not ?",
+  subItems: [
+    { name: "Invoice Document", dropdown: "" },
+    { name: "Valid Eway Bill (Optional)", dropdown: "" },
+    { name: "MTC (Optional)", dropdown: "" },
+    { name: "LR Slip or Docket Slip", dropdown: "" }
+  ],
+  dropdownHighlighted: false
 },
 ]);
 const [checklists4, setChecklists4] = useState([
   {
-  point: 'No. of Invoices',
-  checked: false
-}, 
-{
-  point: 'No. of e-Way Bills',
-  checked: false
-}, 
-{
-  point: 'Checking Invoice and Waybill having valid date',
-  checked: false
-},
-{
-  point: 'Acceptance of Total Quantity and Quality',
-  checked: false
-},
-{
-  point: 'Vehicle complete check for any irregular materials apart from Invoiced ones',
-  checked: false
-},
+    point: 'Is truck Sealing done or not and Seal No. (If Available) ?',
+    dropdown: '',
+    image: '',
+    inputValue: '',
+    dropdownHighlighted: false,
+    dropdownDisabled: true
+  }, 
+  {
+    point: 'Commercial Invoices Nos (If more than one enter by Comma Separation)',
+    inputValue: ''
+  }, 
+  {
+    point: 'E way bill and Invoice has valid date or not ?',
+    dropdown: ''
+  }
 ]);
 
   const handleNext = () => {
+    let incompleteItems: ChecklistItem[] = [];
+  
+    if (activeStep === 0) {
+      incompleteItems = checklists0.filter(item => {
+        const requiresInput = ['Vehicle Carrying Capacity', 'Driver License No.', 'Driver License Validity End Date'].includes(item.point);
+        const requiresDropdown = item.dropdown !== undefined;
+        const requiresImages = item.images !== undefined;
+        
+        if (requiresInput && !item.inputValue) return true;
+        if (requiresDropdown && !item.dropdown) return true;
+        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
+        
+        return false;
+      });
+    }else if (activeStep === 1) {
+      incompleteItems = checklists1.filter(item => {
+        const requiresDropdown = item.dropdown !== undefined;
+        const requiresImages = item.images !== undefined;
+        
+        if (requiresDropdown && !item.dropdown) return true;
+        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
+        
+        return false;
+      });
+    } else if (activeStep === 2){
+      incompleteItems = checklists2.filter(item => {
+        const requiresDropdown = item.dropdown !== undefined;
+        const requiresImages = item.images !== undefined;
+
+        if (requiresDropdown && !item.dropdown) return true;
+        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
+        
+        return false;
+      });
+    } else if (activeStep === 3) {
+      incompleteItems = checklists3.filter((item, index) => {
+        const requiresDropdown = item.dropdown !== undefined;
+        const requiresImages = item.images !== undefined;
+        
+        if (requiresDropdown && !item.dropdown) return true;
+        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
+
+        if (index === 4 && item.subItems) {
+          return item.subItems.some((subItem, subIndex) => {
+            const isMandatory = subItem.name !== "Valid Eway Bill (Optional)" && subItem.name !== "MTC (Optional)";
+            return isMandatory && !subItem.dropdown;
+          });
+        }
+        
+        return false;
+      });
+    } else if (activeStep === 4) {
+      incompleteItems = checklists4.filter((item, index) => {
+        const requiresDropdown = item.dropdown !== undefined;
+        const requiresImages = item.image !== undefined;
+        
+        if (requiresDropdown && !item.dropdown) return true;
+        if (requiresImages && index !== 3) {
+          return Object.values(item.image || {}).some(img => !img);
+        }
+        
+        return false;
+      });
+    }
+    if (incompleteItems.length > 0) {
+      const missingFields = incompleteItems.map(item => {
+        if (!item.image && item.image !== undefined) return `${item.point} (missing photo)`;
+        if (!item.dropdown && item.dropdown !== undefined) return `${item.point} (missing selection)`;
+        if (!item.inputValue && item.inputValue !== undefined) return `${item.point} (missing input)`;
+        return item.point;
+      }).join(', ');
+      
+      toast.error(`Please complete the following: ${missingFields}`);
+      return;
+    }
     if (activeStep === steps.length - 1) {
       router.push('/completed');
     }
@@ -184,10 +337,238 @@ const [checklists4, setChecklists4] = useState([
   const handleNewVehicle = () => {
     router.push('/');
   }
+  const allImagesUploaded = (item: ChecklistItem) => {
+    if (!item.images && !item.image) return true;
+    if (item.images) {
+      return Object.values(item.images).every(image => image !== '');
+    }
+    return item.image !== '';
+  };
+
+  const handleImageCapture = (checklistIndex: number, index: number, part?: string) => {
+
+    const imageKey = `${checklistIndex}-${index}-${part || 'main'}`;
+    if (submittedImages[imageKey]) {
+      toast.info('This image has already been submitted');
+      return;
+    }
+    setCurrentChecklistIndex(checklistIndex);
+    setCurrentImageIndex(index);
+    setCurrentImagePart(part || null);
+    setShowCamera(true);
+  };
+  
+  const handleDropdownChange = async (checklistIndex: number,itemIndex: number, value: string, subItemIndex?:number) => {
+    try {
+
+      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][checklistIndex];
+      setChecklist((prevChecklists: any) => {
+        const newChecklists = [...prevChecklists];
+        if(subItemIndex !== undefined ){
+          const item = newChecklists[itemIndex];
+          if (item && item.subItems && Array.isArray(item.subItems)) {
+            const subItem = item.subItems[subItemIndex];
+            if (subItem) {
+              item.subItems[subItemIndex] = { 
+                ...subItem, 
+                dropdown: value
+              };
+            }
+          }   
+        }
+        else{
+          newChecklists[itemIndex] = { 
+            ...newChecklists[itemIndex], 
+            dropdown: value,
+            dropdownHighlighted: false
+          };
+        }
+        return newChecklists;
+      });
+
+      const response = await fetch('https://live-api.instavans.com/api/v1/security/update_checklist_item', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+        },
+        body: JSON.stringify({
+          _id: securityCheck._id,
+          checklistIndex: 0,
+          itemIndex,
+          field: 'dropdown',
+          value,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update dropdown');
+      }
+
+      const updatedSecurityCheck = await response.json();
+      toast.success('Dropdown updated successfully');
+    } catch (error) {
+      console.error('Error updating dropdown:', error);
+      toast.error('Failed to update dropdown');
+    }
+  };
+
+  const handleCaptureComplete = async (imageSrc: string) => {
+    try {
+      setIsUploading(true);
+  
+      if (!session?.user?.data?.accessToken) {
+        throw new Error('Authentication token is missing');
+      }
+  
+      const uploadId = securityCheck?._id || vehicleNo;
+      if (!uploadId) {
+        throw new Error('No valid ID for upload');
+      }
+  
+      const formData = new FormData();
+      formData.append('images', dataURItoBlob(imageSrc), 'image.jpg');
+      formData.append('stage', `stage${currentChecklistIndex + 1}`);
+      formData.append('_id', uploadId);
+
+      const headers = {
+        'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
+      };
+  
+  
+      const url = 'https://live-api.instavans.com/api/thor/security/save_stage_images';
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: headers
+      });
+  
+  
+      const responseText = await response.text();
+  
+      if (!response.ok) {
+        let errorMessage = 'Server error';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = JSON.stringify(errorData);
+        } catch (e) {
+          errorMessage = responseText;
+        }
+        throw new Error(`Server error: ${errorMessage}`);
+      }
+  
+      const data = JSON.parse(responseText);
+  
+      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][currentChecklistIndex];
+      setChecklist((prevChecklists: any) => {
+        const newChecklists = [...prevChecklists];
+        if (currentImageIndex !== null) {
+          if (currentImagePart) {
+            newChecklists[currentImageIndex] = {
+              ...newChecklists[currentImageIndex],
+              images: {
+                ...newChecklists[currentImageIndex].images,
+                [currentImagePart]: imageSrc
+              },
+              dropdownDisabled: false
+            };
+          } else {
+            newChecklists[currentImageIndex] = {
+              ...newChecklists[currentImageIndex],
+              image: imageSrc,
+              dropdownDisabled: false
+            };
+          }
+        }
+        return newChecklists;
+      });
+
+    toast.success('Image uploaded successfully');
+    }  catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error(`Error uploading image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploading(false);
+      setShowCamera(false);
+    }
+  };
+
+  const handleCloseCamera = () => {
+    setShowCamera(false);
+    setCurrentImageIndex(null);
+    setCurrentImagePart(null);
+  };
+
+  const handleInputChange = async (checklistIndex: number, itemIndex: number, value: string, field: string) => {
+    try {
+      let formattedValue = value;
+      if (checklistIndex === 4 && itemIndex === 1 && field === 'inputValue') {
+        formattedValue = formattedValue.replace(/[^a-zA-Z0-9]/g, '');
+
+        let result = '';
+        for (let i = 0; i < formattedValue.length; i += 10) {
+          if (result.length > 0) {
+            result += ',';
+          }
+          result += formattedValue.substring(i, i + 10);
+        }
+
+        formattedValue = result.slice(0, 55);
+      }
+      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][checklistIndex];
+      setChecklist((prevChecklists: any) => {
+        const newChecklists = [...prevChecklists];
+        newChecklists[itemIndex] = { ...newChecklists[itemIndex], [field]: formattedValue };
+        return newChecklists;
+      });
+
+      const response = await fetch('https://live-api.instavans.com/api/v1/security/update_checklist_item', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+        },
+        body: JSON.stringify({
+          _id: securityCheck._id,
+          checklistIndex,
+          itemIndex,
+          field: 'inputValue',
+          value: formattedValue,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update input');
+      }
+
+      const updatedSecurityCheck = await response.json();
+
+      toast.success('Input updated successfully');
+    } catch (error) {
+      console.error('Error updating input:', error);
+      toast.error('Failed to update input');
+    }
+  };
+
   const handleSave = async () => {
     let images = false;
     let formData:any = new FormData();
-    let payload: any = {};
+    let payload: any = {
+      _id: securityCheck._id,
+      stage: `stage${activeStep + 1}`,
+      stageName: steps[activeStep],
+      finish: activeStep === steps.length - 1,
+      stageDateName: `${steps[activeStep]}_date`,
+      stageDateTime: [reportingDate, gateInDate, loadInDate, loadOutDate, gateOutDate][activeStep],
+      checklist: checklists0.map(item => ({
+        point: item.point,
+        checked: item.dropdown === 'Yes' || item.dropdown === 'Valid',
+        value: item.dropdown || item.inputValue,
+      }))
+    };
     if (activeStep === 0) {
       for (let i = 0; i < vehcileReportingFiles.length; i++) {
         formData.append('images', dataURItoBlob(vehcileReportingFiles[i].preview), vehcileReportingFiles[i].name);
@@ -202,6 +583,11 @@ const [checklists4, setChecklists4] = useState([
       finish: false,
       stageDateName: 'vehicle_reporting_date',
       stageDateTime: reportingDate,
+      checklist: checklists0.map(item => ({
+        point: item.point,
+        image: item.image,
+        inputValue: item.inputValue
+      }))
       }
     } else if (activeStep === 1) {
       for (let i = 0; i < vehcileGateInFiles.length; i++) {
@@ -338,19 +724,18 @@ const [checklists4, setChecklists4] = useState([
   };
 
 
-
   const handleReset = () => {
     setActiveStep(0);
   };
 
   useEffect(() => {
     const getVehicleData = async () => {
-    const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
-      method: 'GET',
-      headers: {
-          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
-          'Content-Type': 'application/json',
-      },
+      const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+        method: 'GET',
+        headers: {
+            'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+            'Content-Type': 'application/json',
+        },
       });
       const data = await response.json();
       if (data.statusCode === 200){
@@ -359,126 +744,135 @@ const [checklists4, setChecklists4] = useState([
         const lastLocation = d.trip_tracker && d.trip_tracker.last_location.address && d.trip_tracker.last_location.address || 'N/A';
         const lastLocationAttr = d.trip_tracker && d.trip_tracker.last_location_at && lastLocationAt;
 
-      const security = data.data.securityCheck;
-      if (security?.stage1?.completed === true) {
-        const checks = security.stage1.checklist.map((c: { point: any; checked: any; }) => {
-          return {
-            point: c.point,
-            checked: c.checked
+        const security = data.data.securityCheck;
+        if (security?.stage1?.completed === true) {
+          const checks = security.stage1.checklist.map((c: { point: any; checked: any; }) => {
+            return {
+              point: c.point,
+              checked: c.checked
+            }
+          });
+          setChecklists0(checks.length > 0 ? checks : checklists0);
+          setReportingDate(security.stage1.completed_at);
+          setActiveStep(0);
+          if (security.stage1.images?.length) {
+            const newImages = security.stage1.images.map((i: any) => ({ name: i, preview: i }));
+            setVehcileReportingFiles(newImages);
           }
-        });
-        setChecklists0(checks);
-        setReportingDate(security.stage1.completed_at);
-        setActiveStep(0);
-        if (security.stage1.images?.length) {
-          const newImages = security.stage1.images.map((i: any) => ({ name: i, preview: i }));
-          setVehcileReportingFiles(newImages);
-        }
-      } 
-      if (security?.stage2?.completed === true) {
-        const checks = security.stage2.checklist.map((c: { point: any; checked: any; }) => {
-          return {
-            point: c.point,
-            checked: c.checked
+        } 
+        if (security?.stage2?.completed === true) {
+          const checks = security.stage2.checklist.map((c: { point: any; checked: any; }) => {
+            return {
+              point: c.point,
+              checked: c.checked
+            }
+          });
+          setChecklists1(checks);
+          setGateInDate(security.stage2.completed_at);
+          setActiveStep(1);
+          if (security.stage2.images?.length) {
+              const newImages = security.stage2.images.map((i: any) => ({ name: i, preview: i }));
+            setVehcileGateInFiles(newImages);
           }
-        });
-        setChecklists1(checks);
-        setGateInDate(security.stage2.completed_at);
-        setActiveStep(1);
-        if (security.stage2.images?.length) {
-            const newImages = security.stage2.images.map((i: any) => ({ name: i, preview: i }));
-          setVehcileGateInFiles(newImages);
-        }
-      } 
-      if (security?.stage3?.completed === true) {
-        const checks = security.stage3.checklist.map((c: { point: any; checked: any; }) => {
-          return {
-            point: c.point,
-            checked: c.checked
+        } 
+        if (security?.stage3?.completed === true) {
+          const checks = security.stage3.checklist.map((c: { point: any; checked: any; }) => {
+            return {
+              point: c.point,
+              checked: c.checked
+            }
+          });
+          setChecklists2(checks);
+          setLoadInDate(security.stage3.completed_at);
+          setActiveStep(2);
+          if (security.stage3.images?.length) {
+            const newImages = security.stage3.images.map((i: any) => ({ name: i, preview: i }));
+            setVehcileLoadInFiles(newImages);
           }
-        });
-        setChecklists2(checks);
-        setLoadInDate(security.stage3.completed_at);
-        setActiveStep(2);
-        if (security.stage3.images?.length) {
-          const newImages = security.stage3.images.map((i: any) => ({ name: i, preview: i }));
-          setVehcileLoadInFiles(newImages);
-        }
-      } 
-      if (security?.stage4?.completed === true) {
-        const checks = security.stage4.checklist.map((c: { point: any; checked: any; }) => {
-          return {
-            point: c.point,
-            checked: c.checked
+        } 
+        if (security?.stage4?.completed === true) {
+          const checks = security.stage4.checklist.map((c: { point: any; checked: any; }) => {
+            return {
+              point: c.point,
+              checked: c.checked
+            }
+          });
+          setChecklists3(checks);
+          setLoadOutDate(security.stage4.completed_at);
+          setActiveStep(3);
+          if (security.stage4.images?.length) {
+            const newImages = security.stage4.images.map((i: any) => ({ name: i, preview: i }));
+            setVehcileLoadOutFiles(newImages);
           }
-        });
-        setChecklists3(checks);
-        setLoadOutDate(security.stage4.completed_at);
-        setActiveStep(3);
-        if (security.stage4.images?.length) {
-          const newImages = security.stage4.images.map((i: any) => ({ name: i, preview: i }));
-          setVehcileLoadOutFiles(newImages);
-        }
-      } 
-      if (security?.stage5?.completed === true) {
-        const checks = security.stage5.checklist.map((c: { point: any; checked: any; }) => {
-          return {
-            point: c.point,
-            checked: c.checked
+        } 
+        if (security?.stage5?.completed === true) {
+          const checks = security.stage5.checklist.map((c: { point: any; checked: any; }) => {
+            return {
+              point: c.point,
+              checked: c.checked
+            }
+          });
+          setChecklists4(checks);
+          setGateOutDate(security.stage5.completed_at);
+          setActiveStep(4);
+           if (security.stage5.images?.length) {
+            const newImages = security.stage5.images.map((i: any) => ({ name: i, preview: i }));
+            setVehcileLoadOutFiles(newImages);
           }
-        });
-        setChecklists4(checks);
-        setGateOutDate(security.stage5.completed_at);
-        setActiveStep(4);
-         if (security.stage5.images?.length) {
-          const newImages = security.stage5.images.map((i: any) => ({ name: i, preview: i }));
-          setVehcileLoadOutFiles(newImages);
         }
-      }
         setShipment(d);
         setTrackingMethod(trackingMethod);
         setLastLocation(lastLocation);
         setLastLocationAt(lastLocationAt);
-      setSecurityCheck(security);
-      return d;
+        setSecurityCheck(security);
+        return d;
       } else if (data.statusCode === 401) {
-        
         toast.error(data.error);
         // signOut();
       } else {
         toast.error('No Vehicle found, please logout and try again');
-    }
+      }
     };
     getVehicleData();
-    
   }, [vehicleNo]);
 
 
-  const handleCheckboxChange0 = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newChecklists = [...checklists0];
-    newChecklists[index].checked = event.target.checked;
-    setChecklists0(newChecklists);
+  const handleCheckboxChange = async (listIndex: number, itemIndex: number, checked: boolean) => {
+    try {
+      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][listIndex];
+      setChecklist((prev: any[]) => prev.map((item, i) =>
+        i === itemIndex ? { ...item, checked, inputValue: checked ? new Date().toLocaleString() : '' } : item
+      ));
+  
+      const response = await fetch('https://live-api.instavans.com/api/thor/security/update_checklist_item', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+        },
+        body: JSON.stringify({
+          _id: securityCheck._id,
+          checklistIndex: listIndex,
+          itemIndex,
+          field: 'checked',
+          value: checked,
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update checkbox');
+      }
+  
+      const updatedSecurityCheck = await response.json();
+  
+      toast.success('Checkbox updated successfully');
+    } catch (error) {
+      console.error('Error updating checkbox:', error);
+      toast.error('Failed to update checkbox');
+    }
   };
-  const handleCheckboxChange1 = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newChecklists = [...checklists1];
-    newChecklists[index].checked = event.target.checked;
-    setChecklists1(newChecklists);
-  };
-  const handleCheckboxChange2 = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newChecklists = [...checklists2];
-    newChecklists[index].checked = event.target.checked;
-    setChecklists2(newChecklists);
-  };
-  const handleCheckboxChange3 = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newChecklists = [...checklists3];
-    newChecklists[index].checked = event.target.checked;
-    setChecklists3(newChecklists);
-  };
-  const handleCheckboxChange4 = (index: number) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newChecklists = [...checklists4];
-    newChecklists[index].checked = event.target.checked;
-    setChecklists4(newChecklists);
-  };
+ 
   const router = useRouter();
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
@@ -681,37 +1075,181 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             </div>
           ) : (
 
-            <div className=' flex flex-col gap-[12px] relative top-[156px] md:px-[80px] px-[24px]'>
+            <div className='flex flex-col gap-[12px] relative top-[156px] md:px-[80px] px-[24px]'>
               {activeStep == 0 &&
-                  <>
+                <>
                   <div className="top md:flex md:flex-row-reverse gap-[24px]">
-                    <div className="right w-full">
+                  <div className="right w-full">
                   <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists0.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange0(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
+                          <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                        </div>
+                        <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
+                        {checklists0.map((item, index) => (
+                        <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
+                        <div className="left-side flex-grow">
+                          <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                        </div>
+                        <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
+                            {index <= 4 && (
+                              <div className="custom-select" style={{
+                                backgroundColor: item.dropdownHighlighted ? 'yellow' : 'white',
+                                marginBottom: '10px'
+                              }}>
+                                <select
+                                  value={item.dropdown || ''}
+                                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+                                    handleDropdownChange(0, index, event.target.value);
+                                  }}
+                                  disabled={!allImagesUploaded(item) || item.dropdownDisabled}
+                                  style={{ 
+                                    minWidth: '200px',
+                                    padding: '8px',
+                                    border: '1px solid #ccc',
+                                    borderRadius: '4px',
+                                    fontSize: '12px',
+                                    backgroundColor: !allImagesUploaded(item) || item.dropdownDisabled ? '#a9a9a9' : 'white', 
+                                    color: !allImagesUploaded(item) || item.dropdownDisabled ? '#555' : 'black', 
+                                    cursor: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  <option value="" disabled>{item.dropdown ? item.dropdown : 'Select'}</option>
+                                  {index === 4 ? (
+                                    <>
+                                      <option value="Valid">Valid</option>
+                                      <option value="Invalid">Invalid</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="Yes">Yes</option>
+                                      <option value="No">No</option>
+                                    </>
+                                  )}
+                                </select>
+                              </div>
+                            )}
+                            {(index > 0 && index <= 5) && (
+                              <Grid container justifyContent="center">
+                                <Grid item>
+                                  <IconButton 
+                                    onClick={() => handleImageCapture(0, index)}
+                                    disabled={Boolean(item.image)}
+                                  >
+                                    {item.image ? (
+                                      <img src={item.image} alt="Captured" style={{width: '40px', height: '40px', borderRadius: '4px'}} />
+                                    ) : (
+                                      <CameraAltOutlinedIcon />
+                                    )}
+                                  </IconButton>
+                                  <Typography variant="caption">Camera</Typography>
+                                </Grid>
+                              </Grid>
+                            )}
+                            {index === 0 && (
+                              <Grid 
+                                container 
+                                spacing={1} 
+                                className="camera-icons"
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  justifyContent: 'space-around',
+                                  maxWidth: '100%',
+                                  marginBottom: '16px',
+                                  paddingRight: '20px'
+                                }}
+                              >
+                                {['Floor Body', 'Floor', 'Left', 'Right', 'Rear'].map(part => (
+                                  <Grid 
+                                    item 
+                                    xs={4} 
+                                    sm={4} 
+                                    key={part}
+                                    style={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      marginBottom: '8px'
+                                    }}
+                                  >
+                                    <IconButton 
+                                      onClick={() => handleImageCapture(0, index, part)}
+                                      style={{
+                                        padding: '4px',
+                                        marginBottom: '4px'
+                                      }}
+                                      disabled={Boolean(item.images && item.images[part])}
+                                    >
+                                      {item.images && item.images[part] ? (
+                                        <img 
+                                          src={item.images[part]} 
+                                          alt={part} 
+                                          style={{
+                                            width: '40px', 
+                                            height: '40px', 
+                                            objectFit: 'cover',
+                                            borderRadius: '4px'
+                                          }} 
+                                        />
+                                      ) : (
+                                        <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
+                                      )}
+                                    </IconButton>
+                                    <Typography 
+                                      variant="caption" 
+                                      style={{
+                                        fontSize: '10px',
+                                        textAlign: 'center',
+                                        lineHeight: '1.1',
+                                        maxWidth: '60px'
+                                      }}
+                                    >
+                                      {part}
+                                    </Typography>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            )}
+                            {(index >= 3 && index <= 7) && (
+                              <div style={{
+                                marginTop: '10px',
+                                width: '100%'
+                              }}>
+                                <input
+                                  type="text"
+                                  value={index === 3 ? item.validityDate : index === 4 ? item.validityEndDate : item.inputValue}
+                                  onChange={(e) => 
+                                    {
+                                      handleInputChange(0, index, e.target.value, index === 3 ? 'validityDate' : index === 4 ? 'validityEndDate' : 'inputValue')
+                                    }
+                                  }
+                                  placeholder={index === 3 ? "Validity Date" : index === 4 ? "Validity End Date" : item.point}
+                                  required
+                                  style={{
+                                    width: '200px',
+                                    paddingLeft: '10px',
+                                    height: '35px',
+                                    fontSize: '12px',
+                                    border: '1px solid #ccc',
+                                    padding: '5px',
+                                    boxSizing: 'border-box',
+                                    borderRadius: '4px'
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                        </div>
 
+                      </div>
                     </div>
                   </div>
-                  </div>
-                  <div className="left flex flex-col gap-[16px] ">
-                  <VehicleIdentity vehicleNo={vehicleNo} sin={shipment.SIN} soNumber={shipment.sale_order} materials={shipment.materials?.map((m: { name: any; }) => m.name).join(', ')} carrier={shipment?.carrier?.name} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="w-full md:w-1/3 flex flex-col gap-[16px]">
+                  <VehicleIdentity vehicleNo={vehicleNo} sin={shipment.SIN} soNumber={shipment.sale_order} materials={shipment.materials?.map((m: { name: any; }) => m.name).join(', ')} carrier={shipment?.carrier?.name}  />
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
                     <div className="body">
                       <div className="detailsSection">
                         <div className="label">
@@ -731,7 +1269,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -791,7 +1329,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                 </>}
               {activeStep == 1 &&
-                  <>
+                   <>
                   <div className="top md:flex md:flex-row-reverse gap-[24px]">
                     <div className="right w-full">
                       <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
@@ -800,18 +1338,35 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
                       </div>
                       <div className="checkListSection">
-                        {checklists1.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange1(i)} />
-                            </div>
-                          </div>);
-                        })}
+                      {checklists1.map((item, index) => (
+                        <Grid container spacing={2} key={index} className="checklist-item">
+                          <Grid item xs={12} sm={6} md={4} className="right-side text-[#71747A] text-[12px]">
+                            <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                          </Grid>
+                          <Grid item xs={12} sm={6} md={8} className="left-side" style={{ display: "flex", justifyContent: "end",height: "40px"}}>
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={item.isAutomatic}
+                                  onChange={(event) => handleCheckboxChange(1, index, event.target.checked)}
+                                />
+                              }
+                              label={<span className="text-[12px]">Automatic Date & Time</span>}
+                            />
+                          </Grid>
+                          <div className="value">
+                          <LocalizationProvider dateAdapter={AdapterDayjs}>
+                            <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
+                              // label="For mobile"
+                              value={gateInDate}
+                              onChange={(newValue) => {
+                                setGateInDate(newValue);
+                              } }
+                              renderInput={(params) => <TextField {...params} />} />
+                          </LocalizationProvider>
+                        </div>
+                        </Grid>
+                      ))}
                       </div>
                     </div>
                   </div>
@@ -820,7 +1375,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
                       
                   {/* <DriverDetails /> */}
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle gate in </p>
@@ -843,7 +1398,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -903,7 +1458,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                 </>}
               {activeStep == 2 &&
-                  <>
+                <>
                   <div className="top md:flex md:flex-row-reverse gap-[24px]">
                     <div className="right w-full">
                       <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
@@ -911,26 +1466,176 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
                       </div>
-                      <div className="checkListSection">
-                        {checklists2.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange2(i)} />
-                            </div>
-                          </div>);
-                        })}
+                      <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
+                      {checklists2.map((item, index) => (
+                 <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
+                 <div className="left-side flex-grow">
+                   <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                 </div>
+                  <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
+                    {index <= 4 && (
+                    <select
+                      value={item.dropdown || ''}
+                      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+                        handleDropdownChange(2, index, event.target.value);
+                      }}
+                      disabled={!allImagesUploaded(item) || item.dropdownDisabled}
+                      style={{
+                        minWidth: '200px',
+                        padding: '8px',
+                        border: '1px solid #ccc',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        backgroundColor: !allImagesUploaded(item) || item.dropdownDisabled ? '#a9a9a9' : 'white', 
+                        cursor: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer',
+                        color: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer' 
+                      }}
+                    >
+                      <option value="" disabled>{item.dropdown ? item.dropdown : 'Select'}</option>
+                      {index === 1 ? (
+                        <>
+                          <option value="Covered">Covered</option>
+                          <option value="Not Covered">Not Covered</option>
+                        </>
+                      ) : index === 2 ? (
+                        <>
+                          <option value="Done">Done</option>
+                          <option value="Not Done">Not Done</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </>
+                      )}
+                    </select>
+                    )}
+                    {index === 0 && (
+                      <Grid 
+                        container 
+                        spacing={1} 
+                        className="camera-icons"
+                        style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          justifyContent: 'space-around',
+                          maxWidth: '100%',
+                          marginBottom: '16px',
+                          paddingRight: '20px'
+                        }}
+                      >
+                      {['Floor Body', 'Floor', 'Left', 'Right', 'Rear'].map(part => (
+                          <Grid 
+                            item 
+                            xs={4} 
+                            sm={4} 
+                            key={part}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              marginBottom: '8px'
+                            }}
+                          >
+                            <IconButton 
+                              onClick={() => handleImageCapture(2, index, part)}
+                              style={{
+                                padding: '4px',
+                                marginBottom: '4px'
+                              }}
+                              disabled={Boolean(item.images && item.images[part])}
+                            >
+                              {item.images && item.images[part] ? (
+                                <img 
+                                  src={item.images[part]} 
+                                  alt={part} 
+                                  style={{
+                                    width: '40px', 
+                                    height: '40px', 
+                                    objectFit: 'cover',
+                                    borderRadius: '4px'
+                                  }} 
+                                />
+                              ) : (
+                                <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
+                              )}
+                            </IconButton>
+                            <Typography 
+                              variant="caption" 
+                              style={{
+                                fontSize: '10px',
+                                textAlign: 'center',
+                                lineHeight: '1.1',
+                                maxWidth: '60px'
+                              }}
+                            >
+                              {part}
+                            </Typography>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    )}
+                    {index === 1 && (
+                    <Grid container spacing={1} className="camera-icons">
+                      {['Photo 1', 'Photo 2'].map(part => (
+                        <Grid item xs={6} key={part}>
+                          <IconButton 
+                            onClick={() => handleImageCapture(2, index, part)}
+                            style={{
+                              padding: '4px',
+                              marginBottom: '4px'
+                            }}
+                            disabled={Boolean(item.images && item.images[part])}
+                          >
+                            {item.images && item.images[part] ? (
+                              <img 
+                                src={item.images[part]} 
+                                alt={part} 
+                                style={{width: '40px', height: '40px', objectFit: 'cover',
+                                  borderRadius: '4px'}} 
+                              />
+                            ) : (
+                              <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
+                            )}
+                          </IconButton>
+                          <Typography variant="caption">
+                            {part}
+                          </Typography>
+                        </Grid>
+                      ))}
+                    </Grid>
+                    )}
+                    {index === 2 && (
+                      <div style={{ marginTop: '10px', width: '100%' }}>
+                        <input
+                          type="text"
+                          value={item.inputValue}
+                          onChange={(e) => handleInputChange(2, index, e.target.value, 'inputValue')}
+                          placeholder="Entry of Weight in Pick up Slip"
+                          required
+                          style={{
+                            width: '200px',
+                            height: '35px',
+                            paddingLeft: '10px',
+                            fontSize: '12px',
+                            border: '1px solid #ccc',
+                            borderRadius: '4px',
+                            padding: '5px',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
                       </div>
                     </div>
                   </div>
                     </div>
-                    <div className="left flex flex-col gap-[16px]">
+                    <div className="w-full md:w-1/3 flex flex-col gap-[16px]" >
                       <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
                         <p className='text-[#131722] text-[18px] font-bold'>Loading in and billing activity</p>
@@ -953,7 +1658,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
@@ -1014,7 +1719,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   
                 </>}
               {activeStep == 3 &&
-                  <>
+                <>
                   <div className="top md:flex md:flex-row-reverse gap-[24px]">
                     <div className="right w-full">
                       <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
@@ -1022,26 +1727,207 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
                       </div>
-                      <div className="checkListSection">
-                        {checklists3.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange3(i)} />
-                            </div>
-                          </div>);
-                        })}
+                      <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
+                      {checklists3.map((item, index) => (
+                        <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
+                        <div className="left-side flex-grow">
+                          <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                        </div>
+                        <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
+                            {index !== 3 && index !== 4 && (
+                              <select
+                                value={item.dropdown || ''}
+                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+                                  handleDropdownChange(3, index, event.target.value);
+                                }}
+                                disabled={item.dropdownDisabled}
+                                style={{
+                                  minWidth: '200px',
+                                  padding: '8px',
+                                  border: '1px solid #ccc',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  backgroundColor: item.dropdownDisabled ? '#a9a9a9' : 'white',
+                                  color: item.dropdownDisabled ? '#555' : 'black',
+                                  cursor: item.dropdownDisabled ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                <option value="" disabled>{item.dropdown ? item.dropdown : 'Select'}</option>
+                                {index === 0 || index === 1 ? (
+                                  <>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                  </>
+                                ) : index === 2 ? (
+                                  <>
+                                    <option value="Done">Done</option>
+                                    <option value="Not Done">Not Done</option>
+                                  </>
+                                ) : (
+                                  <>
+                                    <option value="Provided">Provided</option>
+                                    <option value="Not Provided">Not Provided</option>
+                                  </>
+                                )}
+                              </select>
+                            )}
+                            {index === 0 && (
+                              <Grid 
+                                container 
+                                spacing={1} 
+                                className="camera-icons" 
+                                style={{
+                                  display: 'flex', 
+                                  flexWrap: 'wrap',
+                                  justifyContent: 'space-around', 
+                                  maxWidth: "100%", 
+                                  marginBottom: '16px'
+                                }}
+                                
+                              >
+                                {['First Layer', 'Second Layer', 'Third Layer', 'Fourth Layer', 'Post Loading'].map(part => (
+                                  <Grid 
+                                    item 
+                                    xs={4} 
+                                    sm={4} 
+                                    key={part} 
+                                    style={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      marginBottom: '8px',
+                                    }}
+                                    
+                                  >                                 
+                                  <IconButton 
+                                    onClick={() => handleImageCapture(3, index, part)}
+                                    style={{
+                                      padding: '4px',
+                                      marginBottom: '4px'
+                                    }}
+                                    disabled={Boolean(item.images && item.images[part])}
+                                  >
+                                  {item.images && item.images[part] ? (
+                                    <img 
+                                      src={item.images[part]} 
+                                      alt={part} 
+                                      style={{
+                                        width: '40px', 
+                                        height: '40px', 
+                                        objectFit: 'cover',
+                                        borderRadius: '4px'
+                                      }} 
+                                    />
+                                  ) : (
+                                    <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
+                                  )}
+                                  </IconButton>  
+                                    <Typography 
+                                      variant="caption" 
+                                      style={{
+                                        textAlign: 'center',
+                                        fontSize: '0.7rem',
+                                        lineHeight: '1.1',
+                                        maxWidth: '80px'
+                                      }}
+                                    >
+                                      {part}
+                                    </Typography>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            )}
+                            {index === 2 && (
+                              <>
+                                <Grid container justifyContent="center">
+                                                  <Grid item>
+                                                    <IconButton 
+                                                      onClick={() => handleImageCapture(3, index)}
+                                                      disabled={Boolean(item.image)}
+                                                    >
+                                                      {item.image ? (
+                                                        <img src={item.image} alt="Captured" style={{width: '40px', height: '40px', borderRadius: "4px"}} />
+                                                      ) : (
+                                                        <CameraAltOutlinedIcon />
+                                                      )}
+                                                    </IconButton>
+                                                    <Typography variant="caption">Camera</Typography>
+                                                  </Grid>
+                                                </Grid>
+                                <div style={{ marginTop: '10px', width: '100%' }}>
+                                  <input
+                                    type="text"
+                                    value={item.inputValue}
+                                    onChange={(e) => handleInputChange(3,index, e.target.value, 'inputValue')}
+                                    placeholder="Seal No. (Optional)"
+                                    style={{
+                                      width: '200px',
+                                      height: '35px',
+                                      fontSize: '12px',
+                                      border: '1px solid #ccc',
+                                      borderRadius: '4px',
+                                      padding: '5px',
+                                      boxSizing: 'border-box',
+                                      marginTop: '-5px'
+                                    }}
+                                  />
+                                </div>
+                              </>
+                            )}
+                            {index === 3 && (
+                                <Grid container justifyContent="center">
+                                                  <Grid item>
+                                                    <IconButton 
+                                                      onClick={() => handleImageCapture(3, index)}
+                                                      disabled={Boolean(item.image)}
+                                                    >
+                                                      {item.image ? (
+                                                        <img src={item.image} alt="Captured" style={{width: '50px', height: '50px'}} />
+                                                      ) : (
+                                                        <CameraAltOutlinedIcon />
+                                                      )}
+                                                    </IconButton>
+                                                    <Typography variant="caption">Weighment Slip Photo(Optional)</Typography>
+                                                  </Grid>
+                                                </Grid>
+                            )}
+                            {index === 4 && item.subItems && (
+                              <Grid container spacing={1}>
+                                {item.subItems.map((subItem, subIndex) => (
+                                  <Grid item xs={12} key={subIndex}>
+                                    <Typography variant="caption">{subItem.name}</Typography>
+                                    <select
+                                      value={subItem.dropdown}
+                                      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+                                        handleDropdownChange(3, index, event.target.value, subIndex);
+                                      }}
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px',
+                                        border: '1px solid #ccc',
+                                        borderRadius: '4px',
+                                        fontSize: '12px',
+                                        marginTop: '4px'
+                                      }}
+                                    >
+                                      <option value="" disabled>Select</option>
+                                      <option value="Provided">Provided</option>
+                                      <option value="Not Provided">Not Provided</option>
+                                    </select>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                       </div>
                     </div>
                   </div>
                     </div>
-                    <div className="left flex flex-col gap-[16px]">
+                    <div className="w-full md:w-1/3 flex flex-col gap-[16px]">
                       <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
                         <p className='text-[#131722] text-[18px] font-bold'>Loading out and billing activity</p>
@@ -1064,12 +1950,12 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
+                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body flex flex-col gap-[16px]">
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
                       </div>
-                      <div className="uploadSection flex gap-[32px]">
+                      <div className="uploadSection flex gap-[16px]">
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
 
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
@@ -1124,115 +2010,208 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   
                 </>}
               {activeStep == 4 &&
-                  <>
+                <>
                   <div className="top md:flex md:flex-row-reverse gap-[24px]">
                     <div className="right w-full">
-                         <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                      </div>
-                      <div className="checkListSection">
-                        {checklists4.map((ch, i) => {
-                          return (<div className="row flex justify-between items-center" key={i}>
-                            <div className="point">
-                              <p className='text-[#71747A] text-[12px] '>{ch.point}</p>
-                            </div>
-                            <div className="checkbox">
-                              <Checkbox
-                                checked={ch.checked}
-                                onChange={handleCheckboxChange4(i)} />
-                            </div>
-                          </div>);
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                    </div>
-                    <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
-                    <div className="body">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Vehicle gate out activity</p>
-                      </div>
-                      <div className="detailsSection">
-                        <div className="label">
-                          Vehicle gate out time
-                        </div>
-                        <div className="value">
-                          <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
-                              // label="For mobile"
-                              value={gateOutDate}
-                              onChange={(newValue) => {
-                                setGateOutDate(newValue);
-                              } }
-                              renderInput={(params) => <TextField {...params} />} />
-                          </LocalizationProvider>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] w-[357px] rounded-[12px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
-                      </div>
-                      <div className="uploadSection flex gap-[32px]">
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                      <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                        <div className="body flex flex-col gap-[16px]">
+                          <div className="header">
+                            <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                          </div>
+                          <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
+                            {checklists4.map((item, index) => (
+                              <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
+                                <div className="left-side flex-grow">
+                                  <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                                </div>
+                                <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
+                                  {index <= 2 && (
+                                    <div className="custom-select" style={{
+                                      backgroundColor: item.dropdownHighlighted ? 'yellow' : 'white',
+                                      marginBottom: '10px'
+                                    }}>
+                                      <select
+                                        value={item.dropdown || ''}
+                                        onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
+                                          handleDropdownChange(4, index, event.target.value);
+                                        }}
+                                        disabled={!allImagesUploaded(item) || item.dropdownDisabled}
+                                        style={{ 
+                                          minWidth: '200px',
+                                          padding: '8px',
+                                          border: '1px solid #ccc',
+                                          borderRadius: '4px',
+                                          fontSize: '12px',
+                                          backgroundColor: !allImagesUploaded(item) || item.dropdownDisabled ? '#a9a9a9' : 'white', 
+                                          color: !allImagesUploaded(item) || item.dropdownDisabled ? '#555' : 'black', 
+                                          cursor: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer'
+                                        }}
+                                      >
+                                        <option value="" >Select</option>
+                                        <option value="Yes">Yes</option>
+                                        <option value="No">No</option>
+                                      </select>
+                                    </div>
+                                  )}
 
-                          <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
-                          <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
-                        </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateOutFileChange} />
-                          <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
-                          <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
-                        </div>
-                        {/* <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
-                      <canvas className="container" ref={photoRef}></canvas>
-                    </div> */}
-                      </div>
-                      {vehcileGateOutFiles.map((file, index) => (
-                        <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                          {/* <img src={closeIcon} /> */}
-                          <Image
-                            src={closeIcon}
-                            alt=""
-                            width={24}
-                            height={24}
-                            className='absolute top-[-10px] right-[-9px] text-[#131722] '
-                            onClick={() => handleVehicleGateOutDeleteFile(index)} />
-                          <img key={file.name} src={file.preview} alt={file.name} />
-                        </div>
-                      ))}
+                                  {index === 0 && (
+                                    <Grid container justifyContent="center">
+                                      <Grid item>
+                                        <IconButton 
+                                          onClick={() => handleImageCapture(4, index)}
+                                          disabled={Boolean(item.image)}
+                                        >
+                                          {item.image ? (
+                                            <img src={item.image} alt="Captured" style={{width: '40px', height: '40px',borderRadius: "4px"}} />
+                                          ) : (
+                                            <CameraAltOutlinedIcon />
+                                          )}
+                                        </IconButton>
+                                        <Typography variant="caption">Camera</Typography>
+                                      </Grid>
+                                    </Grid>
+                                  )}
+
+                                  {index === 0  && (
+                                    <div style={{
+                                      marginTop: '10px',
+                                      width: '100%'
+                                    }}>
+                                      <input
+                                        type="text"
+                                        value={item.inputValue}
+                                        onChange={(e) => 
+                                          handleInputChange(4, index, e.target.value, 'inputValue')
+                                        }
+                                        placeholder="Enter Seal No. (If Available)"
+                                        style={{
+                                          width: '200px',
+                                          paddingLeft: '10px',
+                                          height: '35px',
+                                          fontSize: '12px',
+                                          border: '1px solid #ccc',
+                                          padding: '5px',
+                                          boxSizing: 'border-box',
+                                          borderRadius: '4px'
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                  { index === 1 && (
+                                    <div style={{
+                                      marginTop: '10px',
+                                      width: '100%'
+                                    }}>
+                                      <input
+                                        type="text"
+                                        value={item.inputValue}
+                                        onChange={(e) => 
+                                          handleInputChange(4, index, e.target.value, 'inputValue')
+                                        }
+                                        placeholder="Enter Commercial Invoice Nos"
+                                        required
+                                        style={{
+                                          width: '200px',
+                                          paddingLeft: '10px',
+                                          height: '35px',
+                                          fontSize: '12px',
+                                          border: '1px solid #ccc',
+                                          padding: '5px',
+                                          boxSizing: 'border-box',
+                                          borderRadius: '4px'
+                                        }}
+                                      />
+                                      <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
+                      Enter up to 5 seal numbers.
                     </div>
-                  </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-full md:w-1/3 flex flex-col gap-[16px]">
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
+                      <div className="gateInDetails bg-[#fcfcfc] p-[20px] rounded-[12px]">
+                        <div className="body">
+                          <div className="detailsSection">
+                            <div className="label">
+                              Vehicle gate out time
+                            </div>
+                            <div className="value">
+                              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
+                                  value={gateOutDate}
+                                  onChange={(newValue) => {
+                                    setGateOutDate(newValue);
+                                  }}
+                                  renderInput={(params) => <TextField {...params} />} />
+                              </LocalizationProvider>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
+                        <div className="body flex flex-col gap-[16px]">
+                          <div className="header">
+                            <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
+                          </div>
+                          <div className="uploadSection flex gap-[16px]">
+                            <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                              <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
+                              <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
+                            </div>
+                            <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                              <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateOutFileChange} />
+                              <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
+                              <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
+                            </div>
+                          </div>
+                          <div className="uploadSection flex gap-[16px]">
+                            {vehcileGateOutFiles.map((file, index) => (
+                              <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                                <Image
+                                  src={closeIcon}
+                                  alt=""
+                                  width={24}
+                                  height={24}
+                                  className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                                  onClick={() => handleVehicleGateOutDeleteFile(index)} />
+                                <img key={file.name} src={file.preview} alt={file.name} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
-                    
                     <div className="buttons flex items-center justify-between w-full ">
-                     <div className="left">
-                      <div onClick={handleNewVehicle} className="button">
-                      <button className='text-white'>NEW VEHICLE</button>
-                    </div>
+                      <div className="left">
+                        <div onClick={handleNewVehicle} className="button">
+                          <button className='text-white'>NEW VEHICLE</button>
+                        </div>
                       </div>
                       <div className="right flex items-center justify-end w-full">
-                    <div onClick={handleSave} className="button">
-                      <button className='text-white'>SAVE</button>
-                    </div>
-                    <div onClick={handleNext} className="button">
-                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
-                    </div>
+                        <div onClick={handleSave} className="button">
+                          <button className='text-white'>SAVE</button>
+                        </div>
+                        <div onClick={handleNext} className="button">
+                          <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                        </div>
                       </div>
+                    </div>
                   </div>
-                  </div>
-                  
-                 
-                  
-                </>}
+                </>
+              }
+              <CameraModal
+                isOpen={showCamera && !submittedImages[`${currentChecklistIndex}-${currentImageIndex}-${currentImagePart || 'main'}`]}
+                onClose={handleCloseCamera}
+                onCapture={handleCaptureComplete}
+              />
 
             </div>
           )}
