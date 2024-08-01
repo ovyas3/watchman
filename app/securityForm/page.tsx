@@ -1094,7 +1094,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                             {index <= 4 && (
                               <div className="custom-select" style={{
-                                backgroundColor: item.dropdownHighlighted ? 'yellow' : 'white',
+                                backgroundColor: item.dropdownHighlighted ? '#ccc' : 'white',
                                 marginBottom: '10px'
                               }}>
                                 <select
@@ -2027,7 +2027,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                 <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                                   {index <= 2 && (
                                     <div className="custom-select" style={{
-                                      backgroundColor: item.dropdownHighlighted ? 'yellow' : 'white',
+                                      backgroundColor: item.dropdownHighlighted ? '#ccc' : 'white',
                                       marginBottom: '10px'
                                     }}>
                                       <select
