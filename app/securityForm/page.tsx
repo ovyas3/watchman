@@ -44,7 +44,6 @@ interface ChecklistItem {
   images?: Record<string, string>;
   image?: string;
   inputValue?: string;
-  dropdownHighlighted?: boolean;
   checked?: boolean;
   isAutomatic?: boolean;
   subItems?: SubItem[];
@@ -108,7 +107,6 @@ function SecurityForm({ searchParams }: props) {
       'Right': '',
       'Rear': ''
     },
-    dropdownHighlighted: false,
     dropdownDisabled: true,
   }, 
   {
@@ -126,7 +124,6 @@ function SecurityForm({ searchParams }: props) {
     dropdown: '',
     image: '',
     inputValue: '',
-    dropdownHighlighted: false,
     dropdownDisabled: true
   },
   {
@@ -134,7 +131,6 @@ function SecurityForm({ searchParams }: props) {
     dropdown: '',
     image: '',
     inputValue: '',
-    dropdownHighlighted: false,
     dropdownDisabled: true
   },
   {
@@ -169,7 +165,6 @@ const [checklists2, setChecklists2] = useState<ChecklistItem[]>([
     'Right': '',
     'Rear': ''
   },
-  dropdownHighlighted: false,
   dropdownDisabled: true
 }, 
 {
@@ -179,13 +174,11 @@ const [checklists2, setChecklists2] = useState<ChecklistItem[]>([
     'Photo 1': '',
     'Photo 2': ''
   },
-  dropdownHighlighted: false,
   dropdownDisabled: true
 }, 
 {
   point: 'Pick Up Slip Weight and Vehicle Passing weight cross check done ? (In Kgs)',
   dropdown: '',
-  dropdownHighlighted: false,
   inputValue: ''
 }
 ]);
@@ -200,7 +193,6 @@ const [checklists3, setChecklists3] = useState<ChecklistItem[]>([
     'Fourth Layer': '',
     'Post Loading': ''
   },
-  dropdownHighlighted: false,
   dropdownDisabled: true
 }, 
 {
@@ -212,7 +204,6 @@ const [checklists3, setChecklists3] = useState<ChecklistItem[]>([
   dropdown: '',
   image: '',
   inputValue: '',
-  dropdownHighlighted: false,
   dropdownDisabled: true
 },
 {
@@ -228,7 +219,6 @@ const [checklists3, setChecklists3] = useState<ChecklistItem[]>([
     { name: "MTC (Optional)", dropdown: "" },
     { name: "LR Slip or Docket Slip", dropdown: "" }
   ],
-  dropdownHighlighted: false
 },
 ]);
 const [checklists4, setChecklists4] = useState([
@@ -237,7 +227,6 @@ const [checklists4, setChecklists4] = useState([
     dropdown: '',
     image: '',
     inputValue: '',
-    dropdownHighlighted: false,
     dropdownDisabled: true
   }, 
   {
@@ -380,7 +369,6 @@ const [checklists4, setChecklists4] = useState([
           newChecklists[itemIndex] = { 
             ...newChecklists[itemIndex], 
             dropdown: value,
-            dropdownHighlighted: false
           };
         }
         return newChecklists;
@@ -1094,7 +1082,6 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                             {index <= 4 && (
                               <div className="custom-select" style={{
-                                backgroundColor: item.dropdownHighlighted ? '#ccc' : 'white',
                                 marginBottom: '10px'
                               }}>
                                 <select
@@ -2027,7 +2014,6 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                 <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                                   {index <= 2 && (
                                     <div className="custom-select" style={{
-                                      backgroundColor: item.dropdownHighlighted ? '#ccc' : 'white',
                                       marginBottom: '10px'
                                     }}>
                                       <select
