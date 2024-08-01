@@ -44,6 +44,7 @@ interface ChecklistItem {
   images?: Record<string, string>;
   image?: string;
   inputValue?: string;
+  dropdownHighlighted?: boolean;
   checked?: boolean;
   isAutomatic?: boolean;
   subItems?: SubItem[];
@@ -1077,7 +1078,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         {checklists0.map((item, index) => (
                         <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
                         <div className="left-side flex-grow">
-                          <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                          <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                         </div>
                         <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                             {index <= 4 && (
@@ -1328,7 +1329,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       {checklists1.map((item, index) => (
                         <Grid container spacing={2} key={index} className="checklist-item">
                           <Grid item xs={12} sm={6} md={4} className="right-side text-[#71747A] text-[12px]">
-                            <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                            <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                           </Grid>
                           <Grid item xs={12} sm={6} md={8} className="left-side" style={{ display: "flex", justifyContent: "end",height: "40px"}}>
                             <FormControlLabel
@@ -1457,7 +1458,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       {checklists2.map((item, index) => (
                  <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
                  <div className="left-side flex-grow">
-                   <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                   <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                  </div>
                   <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                     {index <= 4 && (
@@ -1718,7 +1719,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       {checklists3.map((item, index) => (
                         <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
                         <div className="left-side flex-grow">
-                          <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                          <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                         </div>
                         <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                             {index !== 3 && index !== 4 && (
@@ -2009,7 +2010,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                             {checklists4.map((item, index) => (
                               <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
                                 <div className="left-side flex-grow">
-                                  <Typography className="text-[#71747A] text-[12px]">{item.point}</Typography>
+                                  <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                                 </div>
                                 <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
                                   {index <= 2 && (
