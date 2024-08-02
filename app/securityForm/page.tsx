@@ -545,105 +545,158 @@ const [checklists4, setChecklists4] = useState([
   const handleSave = async () => {
     let images = false;
     let formData:any = new FormData();
-    let payload: any = {
-      _id: securityCheck._id,
-      stage: `stage${activeStep + 1}`,
-      stageName: steps[activeStep],
-      finish: activeStep === steps.length - 1,
-      stageDateName: `${steps[activeStep]}_date`,
-      stageDateTime: [reportingDate, gateInDate, loadInDate, loadOutDate, gateOutDate][activeStep],
-      checklist: checklists0.map(item => ({
-        point: item.point,
-        checked: item.dropdown === 'Yes' || item.dropdown === 'Valid',
-        value: item.dropdown || item.inputValue,
-      }))
+    const checklists = [checklists0, checklists1, checklists2, checklists3, checklists4];
+    let payload: any;
+  
+    const appendImages = (files: { preview: string; name: string }[]) => {
+      for (let i = 0; i < files.length; i++) {
+        formData.append('images', dataURItoBlob(files[i].preview), files[i].name);
+        images = true;
+      }
     };
-    if (activeStep === 0) {
-      for (let i = 0; i < vehcileReportingFiles.length; i++) {
-        formData.append('images', dataURItoBlob(vehcileReportingFiles[i].preview), vehcileReportingFiles[i].name);
-        images = true;
+  
+    const getChecklistForStage = (stage: number, checklist: any[]) => {
+      switch (stage) {
+        case 0: 
+          return checklist.map(item => ({
+            point: item.point,
+            dropdown: item.dropdown,
+            inputValue: item.inputValue,
+            images: item.images,
+            image: item.image,
+            dropdownDisabled: item.dropdownDisabled,
+            validityDate: item.validityDate,
+            validityEndDate: item.validityEndDate
+          }));
+        case 1:
+          return checklist.map(item => ({
+            point: item.point,
+            checked: item.checked,
+            timestamp: new Date()
+          }));
+        case 2: 
+          return checklist.map(item => ({
+            point: item.point,
+            dropdown: item.dropdown,
+            inputValue: item.inputValue,
+            images: item.images,
+            dropdownDisabled: item.dropdownDisabled,
+          }));
+        case 3: 
+          return checklist.map(item => ({
+            point: item.point,
+            dropdown: item.dropdown,
+            inputValue: item.inputValue,
+            images: item.images,
+            dropdownDisabled: item.dropdownDisabled,
+            image: item.image,
+            subItems: item.subItems?.map((subItem: { name: any; dropdown: any; }) => ({
+              name: subItem.name,
+              dropdown: subItem.dropdown
+            }))
+          }));
+        case 4: 
+          return checklist.map(item => ({
+            point: item.point,
+            dropdown: item.dropdown,
+            inputValue: item.inputValue,
+            image: item.image,
+            dropdownDisabled: item.dropdownDisabled
+          }));
+        default:
+          return [];
       }
-      formData.append('stage', 'stage1');
-      formData.append('_id', securityCheck._id);
-      payload = {
-        _id: securityCheck._id,
-      stage: 'stage1',
-      stageName: 'Vehicle identity and reporting',
-      finish: false,
-      stageDateName: 'vehicle_reporting_date',
-      stageDateTime: reportingDate,
-      checklist: checklists0.map(item => ({
-        point: item.point,
-        image: item.image,
-        inputValue: item.inputValue
-      }))
-      }
-    } else if (activeStep === 1) {
-      for (let i = 0; i < vehcileGateInFiles.length; i++) {
-        formData.append('images', dataURItoBlob(vehcileGateInFiles[i].preview), vehcileGateInFiles[i].name);
-        images = true;
-      }
-      formData.append('stage', 'stage2');
-      formData.append('_id', securityCheck._id);
-      payload = {
-        _id: securityCheck._id,
-        stage: 'stage2',
-        stageName: 'Vehicle gate in',
-        finish: false,
-        stageDateName: 'vehicle_gate_in_date',
-        stageDateTime: gateInDate,
-        checklist: checklists1 
-      }
-    } else if (activeStep === 2) {
-      for (let i = 0; i < vehcileLoadInFiles.length; i++) {
-        formData.append('images', dataURItoBlob(vehcileLoadInFiles[i].preview), vehcileLoadInFiles[i].name);
-        images = true;
-      }
-      formData.append('stage', 'stage3');
-      formData.append('_id', securityCheck._id);
-      payload = {
-        _id: securityCheck._id,
-        stage: 'stage3',
-        stageName: 'Loading in and billing activity',
-        finish: false,
-        stageDateName: 'load_in_date',
-        stageDateTime: loadInDate,
-        checklist: checklists2
-      }
-    } else if (activeStep === 3) {
-      for (let i = 0; i < vehcileLoadOutFiles.length; i++) {
-        formData.append('images', dataURItoBlob(vehcileLoadOutFiles[i].preview), vehcileLoadOutFiles[i].name);
-        images = true;
-      }
-      formData.append('stage', 'stage4');
-      formData.append('_id', securityCheck._id);
-      payload = {
-        _id: securityCheck._id,
-        stage: 'stage4',
-        stageName: 'Loading in and billing activity',
-        finish: false,
-        stageDateName: 'load_out_date',
-        stageDateTime: loadOutDate,
-        checklist: checklists3
-      } 
-    } else if (activeStep === 4) {
-      for (let i = 0; i < vehcileGateOutFiles.length; i++) {
-        formData.append('images', dataURItoBlob(vehcileGateOutFiles[i].preview), vehcileGateOutFiles[i].name);
-        images = true;
-      }
-      formData.append('stage', 'stage5');
-      formData.append('_id', securityCheck._id);
-      payload = {
-        _id: securityCheck._id,
-        stage: 'stage5',
-        stageName: 'Vehicle gate out activity',
-        finish: true,
-        stageDateName: 'vehicle_gate_out_date',
-        stageDateTime: gateOutDate,
-        checklist: checklists4
-      }
+    };
+  
+    switch (activeStep) {
+      case 0:
+        appendImages(vehcileReportingFiles);
+        formData.append('stage', 'stage1');
+        formData.append('_id', securityCheck._id);
+        payload = {
+          _id: securityCheck._id,
+          stage1: {
+            name: 'Vehicle identity and reporting',
+            checklist: getChecklistForStage(0, checklists0),
+            completed: true,
+            completed_at: new Date(),
+            security: session?.user.data._id,
+          },
+          vehicle_reporting_date: reportingDate,
+        };
+        break;
+  
+      case 1:
+        appendImages(vehcileGateInFiles);
+        formData.append('stage', 'stage2');
+        formData.append('_id', securityCheck._id);
+        payload = {
+          _id: securityCheck._id,
+          stage2: {
+            name: 'Vehicle gate in',
+            checklist: getChecklistForStage(1, checklists1),
+            completed: true,
+            completed_at: new Date(),
+            security: session?.user.data._id,
+          },
+          vehicle_gate_in_date: gateInDate,
+        };
+        break;
+  
+      case 2:
+        appendImages(vehcileLoadInFiles);
+        formData.append('stage', 'stage3');
+        formData.append('_id', securityCheck._id);
+        payload = {
+          _id: securityCheck._id,
+          stage3: {
+            name: 'Loading in and billing activity',
+            checklist: getChecklistForStage(2, checklists2),
+            completed: true,
+            completed_at: new Date(),
+            security: session?.user.data._id,
+          },
+          load_in_date: loadInDate,
+        };
+        break;
+  
+      case 3:
+        appendImages(vehcileLoadOutFiles);
+        formData.append('stage', 'stage4');
+        formData.append('_id', securityCheck._id);
+        payload = {
+          _id: securityCheck._id,
+          stage4: {
+            name: 'Loading out and billing activity',
+            checklist: getChecklistForStage(3, checklists3),
+            completed: true,
+            completed_at: new Date(),
+            security: session?.user.data._id,
+          },
+          load_out_date: loadOutDate,
+        };
+        break;
+  
+      case 4:
+        appendImages(vehcileGateOutFiles);
+        formData.append('stage', 'stage5');
+        formData.append('_id', securityCheck._id);
+        payload = {
+          _id: securityCheck._id,
+          stage5: {
+            name: 'Vehicle gate out activity',
+            checklist: getChecklistForStage(4, checklists4),
+            completed: true,
+            completed_at: new Date(),
+            security: session?.user.data._id,
+          },
+          vehicle_gate_out_date: gateOutDate,
+          finished_at: new Date(),
+        };
+        break;
     }
-    if ((payload.checklist && payload.checklist.length && payload.checklist.filter((c: any) => !c.checked).length === 0) || activeStep === 0) {
+  
+    if ((payload[`stage${activeStep + 1}`].checklist.length && payload[`stage${activeStep + 1}`].checklist.filter((c: any) => !c.checked).length === 0) || activeStep === 0) {
       const response = await fetch('https://live-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
