@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="36" height="36" viewBox="0 0 36 36">
+  <defs>
+    <filter id="Ellipse_48" x="0" y="0" width="36" height="36" filterUnits="userSpaceOnUse">
+      <feOffset dy="2" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feFlood flood-opacity="0.039"/>
+      <feComposite operator="in" in2="blur"/>
+      <feComposite in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g id="Group_21304" data-name="Group 21304" transform="translate(-938 -230)">
+    <g transform="matrix(1, 0, 0, 1, 938, 230)" filter="url(#Ellipse_48)">
+      <circle id="Ellipse_48-2" data-name="Ellipse 48" cx="12" cy="12" r="12" transform="translate(6 4)" fill="#fff"/>
+    </g>
+    <g id="Group_21303" data-name="Group 21303" transform="translate(947.958 237.958)">
+      <path id="Path_17021" data-name="Path 17021" d="M0,0H16.084V16.084H0Z" fill="none"/>
+      <path id="Path_17022" data-name="Path 17022" d="M4,7H14.723" transform="translate(-1.319 -2.309)" fill="none" stroke="#131722" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"/>
+      <path id="Path_17023" data-name="Path 17023" d="M10,11v4.021" transform="translate(-3.298 -3.628)" fill="none" stroke="#131722" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"/>
+      <path id="Path_17024" data-name="Path 17024" d="M14,11v4.021" transform="translate(-4.618 -3.628)" fill="none" stroke="#131722" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"/>
+      <path id="Path_17025" data-name="Path 17025" d="M5,7l.67,8.042a1.34,1.34,0,0,0,1.34,1.34h5.361a1.34,1.34,0,0,0,1.34-1.34L14.382,7" transform="translate(-1.649 -2.309)" fill="none" stroke="#131722" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"/>
+      <path id="Path_17026" data-name="Path 17026" d="M9,5.681V3.67A.67.67,0,0,1,9.67,3h2.681a.67.67,0,0,1,.67.67v2.01" transform="translate(-2.969 -0.99)" fill="none" stroke="#131722" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.25"/>
+    </g>
+  </g>
+</svg>

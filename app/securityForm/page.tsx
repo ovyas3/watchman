@@ -4,7 +4,7 @@ import Stepper from '@mui/material/Stepper';
 import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import Button from '@mui/material/Button';
-import { FormControlLabel, Grid, IconButton, Typography } from '@mui/material';
+import { FormControlLabel, Grid, IconButton, Typography, debounce, RadioGroup, Radio, FormControl, FormLabel, Dialog, DialogTitle, DialogContent, DialogActions, Box } from '@mui/material';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import VehicleIdentity from '../components/vehicleIdentity';
 import DriverDetails from '../components/driverDetails';
@@ -28,30 +28,75 @@ import Image from 'next/image'
 import { useSnackbar } from "../../lib/context/SnackbarProvider";
 import { DateTime } from 'luxon';
 import CameraModal from './CameraModal';
+import { DatePicker } from '@mui/x-date-pickers';
+import UploadIcon from '@mui/icons-material/Upload';
+import CloseIcon from '@mui/icons-material/Close';
+import CancelIcon from '../../assets/cancel.svg';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format } from 'date-fns';
 
 type props = {
   searchParams: any,
 };
 
-interface SubItem {
-  name: string;
-  dropdown: string;
-}
 
 interface ChecklistItem {
+  submitted?: any;
+  subInputs?: any;
+  subDropdowns?: any;
+  previousDate?: any;
+  previousInputValue?: string;
+  option1?: string;
+  option2?: string;
+  date?: any;
+  validate?: any;
   point: string;
   dropdown?: string;
-  images?: Record<string, string>;
+  images?: { [key: string]: string };
   image?: string;
   inputValue?: string;
-  dropdownHighlighted?: boolean;
   checked?: boolean;
   isAutomatic?: boolean;
-  subItems?: SubItem[];
-  validityDate?: string;
-  validityEndDate?: string; 
+  subItems?: [
+    {point: string; dropdown?: string ; inputValue?:string;},
+    {point: string; dropdown?: string ; inputValue?:string;},
+    {point: string; dropdown?: string ; inputValue?:string;},
+    {point: string; dropdown?: string ; inputValue?:string;}
+  ] | [];
   dropdownDisabled?: boolean;
+  yesNo?: string | null;
 }
+
+interface ChecklistUpdatePayload {
+  _id: string;
+  checklistIndex: number;
+  itemIndex: number;
+  field: string;
+  value: string | undefined;
+  subItemIndex?: number;
+}
+
+interface ImageUrls {
+  [key: string]: any | { [key: string]: any };
+}
+
+interface ImageUploadSlotProps {
+  image: string;
+  onCapture: () => void;
+  onRemove: () => void;
+  label: string;
+  checklistIndex: number;
+  index: number;
+  part?: string;
+}
+interface RejectedVehicleInfo {
+  vehicleNo: string;
+  saleOrder: string;
+  SIN: string;
+  transporterName: string,
+  photoEvidence: (string | undefined)[];
+}
+
 const steps = [
   'Vehicle Identity And Reporting',
   'Vehicle Gate In',
@@ -62,12 +107,16 @@ const steps = [
 function SecurityForm({ searchParams }: props) {
   const { data: session } = useSession();
   const [vehicleNo, setVehicleNo] = useState(searchParams.vehicleNo);
+  const [saleOrder, setsaleOrder] = useState(searchParams.saleOrder);
+  const [transporterName, settransporterName] = useState(searchParams.transporterName)
+  const [SIN, setSIN] = useState(searchParams.SIN);
   const [shipment, setShipment] = useState<any>({});
   const [trackingMethod, setTrackingMethod] = useState('');
   const [lastLocation, setLastLocation] = useState('');
   const [lastLocationAt, setLastLocationAt] = useState('');
   const [securityCheck, setSecurityCheck] = useState<any>({});
   const addSnackbar = useSnackbar();
+  const [imageUrls, setImageUrls] = useState<ImageUrls>({});
   const [activeStep, setActiveStep] = React.useState(0);
   const [reportingDate, setReportingDate] = React.useState<Dayjs | null>(
     dayjs(),
@@ -84,7 +133,7 @@ function SecurityForm({ searchParams }: props) {
   const [gateOutDate, setGateOutDate] = React.useState<Dayjs | null>(
     dayjs(),
   );
-  const [vehcileReportingFiles, setVehcileReportingFiles] = useState<{ name: string; preview: string }[]>([]);
+  const [vehicleReportingFiles, setVehicleReportingFiles] = useState<{ name: string; preview: string }[]>([]);
   const [vehcileGateInFiles, setVehcileGateInFiles] = useState<{ name: string; preview: string }[]>([]);
   const [vehcileLoadInFiles, setVehcileLoadInFiles] = useState<{ name: string; preview: string }[]>([]);
   const [vehcileLoadOutFiles, setVehcileLoadOutFiles] = useState<{ name: string; preview: string }[]>([]);
@@ -96,234 +145,194 @@ function SecurityForm({ searchParams }: props) {
   const [currentChecklistIndex, setCurrentChecklistIndex] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [submittedImages, setSubmittedImages] = useState<Record<string, boolean>>({});
+  const [savedStages, setSavedStages] = useState<Set<number>>(new Set());
+  const [previousStageData, setPreviousStageData] = useState<any>({});
+  const [isSaved, setIsSaved] = useState(false);
+  const [showSaveReminder, setShowSaveReminder] = useState(false);
+  const [isDataChanged, setIsDataChanged] = useState(false);
+  const [isCurrentStageSaved, setIsCurrentStageSaved] = useState(false);
+  const [isUploadPopupOpen, setIsUploadPopupOpen] = useState(false);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState<any>();
+  const [localImages, setLocalImages] = useState<{ [key: string]: string }>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [currentImageParts, setCurrentImageParts] = useState<string[]>(['main']);
+  const [isRejectionDialogOpen, setIsRejectionDialogOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [localStageSaves, setLocalStageSaves] = useState<{ [key: string]: any }>({});
+  const [rejectedVehicleInfo, setRejectedVehicleInfo] = useState<RejectedVehicleInfo>({
+    vehicleNo: '',
+    saleOrder: '',
+    SIN: '',
+    transporterName: '',
+    photoEvidence: []
+  });
+
 
   const [checklists0, setChecklists0] = useState<ChecklistItem[]>([
     {
-    point: 'Vehicle Body is in Good Condition or Not ?',
-    dropdown: '',
-    images: {
-      'Floor Body': '',
-      'Floor': '',
-      'Left': '',
-      'Right': '',
-      'Rear': ''
+      point: '1.Is the vehicle body in satisfactory condition for transport?',
+      dropdown: '',
+      images: {
+        'Floor Body': '',
+        'Floor': '',
+        'Left': '',
+        'Right': '',
+        'Rear': ''
+      },
+      dropdownDisabled: true,
     },
-    dropdownDisabled: true,
-  }, 
-  {
-    point: 'Vehicle is equipped with 3 Tarpaulins or not ?',
-    dropdown: '',
-    image: ''
-  }, 
-  {
-    point: 'Tarpaulins are in Good Condition or Not ? (Only Stitchless Tarpaulins)',
-    dropdown: '',
-    image: ''
-  },
-  {
-    point: 'Pollution Certificate is Valid ?',
-    dropdown: '',
-    image: '',
-    inputValue: '',
-    dropdownDisabled: true
-  },
-  {
-    point: 'Fitness Certificate is Valid ?',
-    dropdown: '',
-    image: '',
-    inputValue: '',
-    dropdownDisabled: true
-  },
-  {
-    point: 'Vehicle Carrying Capacity in Kgs',
-    inputValue: '',
-    image: ''
-  },
-  {
-    point: 'Driver License No.',
-    inputValue: ''
-  },
-  {
-    point: 'Driver License Validity End Date',
-    inputValue: ''
-  }
-]);
-const [checklists1, setChecklists1] = useState<ChecklistItem[]>([
-  {
-    point: 'Time Stamp of gate In',
-    checked: false,
-    inputValue: new Date().toLocaleString(), 
-  }
-]);
-const [checklists2, setChecklists2] = useState<ChecklistItem[]>([
-  {
-  point: 'Vehicle Body is in Good Condition or Not ?',
-  dropdown: '',
-  images: {
-    'Floor Body': '',
-    'Floor': '',
-    'Left': '',
-    'Right': '',
-    'Rear': ''
-  },
-  dropdownDisabled: true
-}, 
-{
-  point: 'Has the Tarpaulin covered the entire bottom surface of the Truck before loading commencement ?',
-  dropdown: '',
-  images: {
-    'Photo 1': '',
-    'Photo 2': ''
-  },
-  dropdownDisabled: true
-}, 
-{
-  point: 'Pick Up Slip Weight and Vehicle Passing weight cross check done ? (In Kgs)',
-  dropdown: '',
-  inputValue: ''
-}
-]);
-const [checklists3, setChecklists3] = useState<ChecklistItem[]>([
-  {
-  point: 'Layer Wise Loading and Stuffing done as per Stacking Plan ?',
-  dropdown: '',
-  images: {
-    'First Layer': '',
-    'Second Layer': '',
-    'Third Layer': '',
-    'Fourth Layer': '',
-    'Post Loading': ''
-  },
-  dropdownDisabled: true
-}, 
-{
-  point: 'Is the Quantity of Material loaded matching the Quantity in Pick up List ?',
-  dropdown: ''
-}, 
-{
-  point: 'Is truck Sealing done or not and Seal No. (If Available) ?',
-  dropdown: '',
-  image: '',
-  inputValue: '',
-  dropdownDisabled: true
-},
-{
-  point: 'Material Loaded Weight entry in Kgs and Weigh Bridge Slip (If Available)',
-  inputValue: '',
+    {
+      point: '2.Does the vehicle have the required 3 tarpaulins for cargo protection?',
+      dropdown: '',
       image: ''
-},
-{
-  point: "List of Documents Provided or not ?",
-  subItems: [
-    { name: "Invoice Document", dropdown: "" },
-    { name: "Valid Eway Bill (Optional)", dropdown: "" },
-    { name: "MTC (Optional)", dropdown: "" },
-    { name: "LR Slip or Docket Slip", dropdown: "" }
-  ],
-},
-]);
-const [checklists4, setChecklists4] = useState([
-  {
-    point: 'Is truck Sealing done or not and Seal No. (If Available) ?',
-    dropdown: '',
-    image: '',
-    inputValue: '',
-    dropdownDisabled: true
-  }, 
-  {
-    point: 'Commercial Invoices Nos (If more than one enter by Comma Separation)',
-    inputValue: ''
-  }, 
-  {
-    point: 'E way bill and Invoice has valid date or not ?',
-    dropdown: ''
-  }
-]);
-
-  const handleNext = () => {
-    let incompleteItems: ChecklistItem[] = [];
+    },
+    {
+      point: '3.Are the tarpaulins in good condition and stitchless as per company standards?',
+      dropdown: '',
+      image: ''
+    },
+    {
+      point: "4.Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?",
+      dropdown: '',
+      image: '',
+      dropdownDisabled: true,
+      date:''
+    },
+    {
+      point: "5.Has the vehicle's Fitness Certificate been confirmed as current and valid?",
+      dropdown: '',
+      image: '',
+      dropdownDisabled: true,
+      date:''
+    },
+    {
+      point: '6.What is the verified carrying capacity of the vehicle in kilograms?',
+      inputValue: '',
+      image: '',
+    },
+    {
+      point: "7.What is the driver's license number and expiration date of the driver's license?",
+      inputValue: '',
+      date:'',
+    },
+    {
+      point: "8.Screening Driver to check wheather the person is under alocohol influence or not ?",
+      image: '',
+      dropdown: '',
+    }
+  ]);
   
-    if (activeStep === 0) {
-      incompleteItems = checklists0.filter(item => {
-        const requiresInput = ['Vehicle Carrying Capacity', 'Driver License No.', 'Driver License Validity End Date'].includes(item.point);
-        const requiresDropdown = item.dropdown !== undefined;
-        const requiresImages = item.images !== undefined;
-        
-        if (requiresInput && !item.inputValue) return true;
-        if (requiresDropdown && !item.dropdown) return true;
-        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
-        
-        return false;
-      });
-    }else if (activeStep === 1) {
-      incompleteItems = checklists1.filter(item => {
-        const requiresDropdown = item.dropdown !== undefined;
-        const requiresImages = item.images !== undefined;
-        
-        if (requiresDropdown && !item.dropdown) return true;
-        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
-        
-        return false;
-      });
-    } else if (activeStep === 2){
-      incompleteItems = checklists2.filter(item => {
-        const requiresDropdown = item.dropdown !== undefined;
-        const requiresImages = item.images !== undefined;
+  const [checklists1, setChecklists1] = useState<ChecklistItem[]>([
+    {
+      point: "1.What is the exact timestamp of the vehicle's gate entry?",
+      checked: false,
+      inputValue: new Date().toLocaleString(),
+    }
+  ]);
+  
+  const [checklists2, setChecklists2] = useState<ChecklistItem[]>([
+    {
+      point: '1.Has the vehicle body been re-inspected and confirmed to be in good condition?',
+      dropdown: '',
+      images: {
+        'Floor Body': '',
+        'Floor': '',
+        'Left': '',
+        'Right': '',
+        'Rear': ''
+      },
+      dropdownDisabled: true
+    },
+    {
+      point: '2.Is the tarpaulin properly covering the entire bottom surface of the truck prior to loading?',
+      dropdown: '',
+      images: {
+        'Photo 1': '',
+        'Photo 2': ''
+      },
+      dropdownDisabled: true
+    },
+    {
+      point: '3.Has the cross-check between Pick Up Slip weight and Vehicle Passing weight been completed? (In Kgs)',
+      dropdown: '',
+      inputValue: ''
+    }
+  ]);
+  
+  const [checklists3, setChecklists3] = useState<ChecklistItem[]>([
+    {
+      point: '1.Has the layer-wise loading and stuffing been executed according to the approved Stacking Plan?',
+      dropdown: '',
+      images: {
+        'First Layer': '',
+        'Second Layer': '',
+        'Third Layer': '',
+        'Fourth Layer': '',
+        'Post Loading': ''
+      },
+      dropdownDisabled: true
+    },
+    {
+      point: '2.Does the quantity of loaded material correspond precisely with the quantity listed in the Pick up List?',
+      dropdown: ''
+    },
+    {
+      point: '3.Has the truck been properly sealed, and if so, what is the Seal Number?',
+      dropdown: '',
+      image: '',
+      inputValue: '',
+      dropdownDisabled: true
+    },
+    {
+      point: '4.What is the final loaded weight in kilograms as shown in the provided image, and does the image include the Weigh Bridge Slip, if applicable?',
+      image: ''
+    },
+    {
+      point: "5.Have all required documents been provided and verified?",
+      subItems: [
+        {
+          point: '1.Has the Invoice Document been provided?',
+          dropdown: '',
+          inputValue: ''
+        },
+        {
+          point: '2.Has a valid E-way Bill been provided (if applicable)?',
+          dropdown: '',
+          inputValue: ''
+        },
+        {
+          point: '3.Has the Material Test Certificate (MTC) been provided (if applicable)?',
+          dropdown: '',
+          inputValue: ''
+        },
+        {
+          point: '4.Has the Lorry Receipt (LR) Slip or Docket Slip been provided?',
+          dropdown: '',
+          inputValue: ''
+        },
+    ]
+    },
+  ]);
+  
+  const [checklists4, setChecklists4] = useState<ChecklistItem[]>([
+    {
+      point: '1.Has the final truck sealing been completed, and what is the Seal Number (if applicable)?',
+      dropdown: '',
+      image: '',
+      inputValue: '',
+      dropdownDisabled: true
+    },
+    {
+      point: '2.What are the Commercial Invoice Numbers associated with this shipment?',
+      dropdown: '',
+      inputValue: '',
+    },
+    {
+      point: '3.Have the E-way bill and Invoice been verified to have valid and current dates?',
+      dropdown: ''
+    }
+  ]);
 
-        if (requiresDropdown && !item.dropdown) return true;
-        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
-        
-        return false;
-      });
-    } else if (activeStep === 3) {
-      incompleteItems = checklists3.filter((item, index) => {
-        const requiresDropdown = item.dropdown !== undefined;
-        const requiresImages = item.images !== undefined;
-        
-        if (requiresDropdown && !item.dropdown) return true;
-        if (requiresImages && Object.values(item.images || {}).some(img => !img)) return true;
-
-        if (index === 4 && item.subItems) {
-          return item.subItems.some((subItem, subIndex) => {
-            const isMandatory = subItem.name !== "Valid Eway Bill (Optional)" && subItem.name !== "MTC (Optional)";
-            return isMandatory && !subItem.dropdown;
-          });
-        }
-        
-        return false;
-      });
-    } else if (activeStep === 4) {
-      incompleteItems = checklists4.filter((item, index) => {
-        const requiresDropdown = item.dropdown !== undefined;
-        const requiresImages = item.image !== undefined;
-        
-        if (requiresDropdown && !item.dropdown) return true;
-        if (requiresImages && index !== 3) {
-          return Object.values(item.image || {}).some(img => !img);
-        }
-        
-        return false;
-      });
-    }
-    if (incompleteItems.length > 0) {
-      const missingFields = incompleteItems.map(item => {
-        if (!item.image && item.image !== undefined) return `${item.point} (missing photo)`;
-        if (!item.dropdown && item.dropdown !== undefined) return `${item.point} (missing selection)`;
-        if (!item.inputValue && item.inputValue !== undefined) return `${item.point} (missing input)`;
-        return item.point;
-      }).join(', ');
-      
-      toast.error(`Please complete the following: ${missingFields}`);
-      return;
-    }
-    if (activeStep === steps.length - 1) {
-      router.push('/completed');
-    }
-    setActiveStep((prevActiveStep) => {
-      const step = prevActiveStep;
-      return prevActiveStep + 1;
-    });
-  };
   const handleNewVehicle = () => {
     router.push('/');
   }
@@ -336,7 +345,6 @@ const [checklists4, setChecklists4] = useState([
   };
 
   const handleImageCapture = (checklistIndex: number, index: number, part?: string) => {
-
     const imageKey = `${checklistIndex}-${index}-${part || 'main'}`;
     if (submittedImages[imageKey]) {
       toast.info('This image has already been submitted');
@@ -346,63 +354,98 @@ const [checklists4, setChecklists4] = useState([
     setCurrentImageIndex(index);
     setCurrentImagePart(part || null);
     setShowCamera(true);
+    setIsUploadPopupOpen(true);
+  };
+
+  const handleRemoveImage = (checklistIndex: number, index: number, part?: string) => {
+    const imageKey = `${checklistIndex}-${index}-${part || 'main'}`;
+    if (submittedImages[imageKey]) {
+      toast.info('This image has already been submitted and cannot be removed');
+      return;
+    }
+    setLocalImages(prev => {
+      const newLocalImages = { ...prev };
+      delete newLocalImages[imageKey];
+      return newLocalImages;
+    });
+    const setChecklistFunction = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][checklistIndex];
+    setChecklistFunction((prevChecklists: any) => {
+      return prevChecklists.map((item: any, i: number) => {
+        if (i === index) {
+          if (part && item.images) {
+            const newImages = { ...item.images };
+            delete newImages[part];
+            return { ...item, images: newImages };
+          } else if (item.image !== undefined) {
+            return { ...item, image: '' };
+          }
+        }
+        return item;
+      });
+    });
+  };
+
+  const ImageUploadSlot: React.FC<ImageUploadSlotProps> = ({ image, onCapture, onRemove, label, checklistIndex, index, part }) => {
+    const imageKey = `${checklistIndex}-${index}-${part || 'main'}`;
+    const isSubmitted = submittedImages[imageKey];
+  
+    return (
+      <div 
+        className="border p-2 text-center cursor-pointer h-[150px] w-[150px] flex items-center justify-center flex-col relative" 
+        onClick={!image && !isSubmitted ? onCapture : undefined}
+        style={{border: "1px solid #DFE3E8", borderRadius: "5px"}}
+      >
+        {image ? (
+          <div className="relative w-full h-full">
+            <img 
+              src={image} 
+              alt={label} 
+              className="w-full h-full object-cover"
+            />
+          <div 
+            className="absolute top-[-12px] right-[-10px] cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            style={{borderRadius: "50%"}}
+          >
+            <Image 
+              src={CancelIcon}
+              alt="cancelIcon"
+              width={20}
+              height={20}
+              style={{width: '20px', height: '20px',border: '1px solid rgba(0,0,0,0.1)',backgroundColor: "white", borderRadius: "50%"}}
+            />
+          </div>
+          </div>
+        ) 
+        : (
+          <>
+            <div className="mb-2">
+              <CameraAltOutlinedIcon />
+            </div>
+            <p>Add <span style={{color : "#2962FF"}}>{label}</span> of the Vehicle</p>
+          </>
+        )}
+      </div>
+    );
+  };
+
+
+
+
+  const handleCloseCamera = () => {
+    setShowCamera(false);
+    setCurrentImageIndex(null);
+    setCurrentImagePart(null);
+  }; 
+  
+  const handleCameraCapture = (part: string) => {
+    setShowCamera(true);
+    setCurrentImagePart(part);
   };
   
-  const handleDropdownChange = async (checklistIndex: number,itemIndex: number, value: string, subItemIndex?:number) => {
-    try {
-
-      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][checklistIndex];
-      setChecklist((prevChecklists: any) => {
-        const newChecklists = [...prevChecklists];
-        if(subItemIndex !== undefined ){
-          const item = newChecklists[itemIndex];
-          if (item && item.subItems && Array.isArray(item.subItems)) {
-            const subItem = item.subItems[subItemIndex];
-            if (subItem) {
-              item.subItems[subItemIndex] = { 
-                ...subItem, 
-                dropdown: value
-              };
-            }
-          }   
-        }
-        else{
-          newChecklists[itemIndex] = { 
-            ...newChecklists[itemIndex], 
-            dropdown: value,
-          };
-        }
-        return newChecklists;
-      });
-
-      const response = await fetch('https://live-api.instavans.com/api/v1/security/update_checklist_item', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
-        },
-        body: JSON.stringify({
-          _id: securityCheck._id,
-          checklistIndex: 0,
-          itemIndex,
-          field: 'dropdown',
-          value,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update dropdown');
-      }
-
-      const updatedSecurityCheck = await response.json();
-      toast.success('Dropdown updated successfully');
-    } catch (error) {
-      console.error('Error updating dropdown:', error);
-      toast.error('Failed to update dropdown');
-    }
-  };
-
   const handleCaptureComplete = async (imageSrc: string) => {
     try {
       setIsUploading(true);
@@ -416,39 +459,9 @@ const [checklists4, setChecklists4] = useState([
         throw new Error('No valid ID for upload');
       }
   
-      const formData = new FormData();
-      formData.append('images', dataURItoBlob(imageSrc), 'image.jpg');
-      formData.append('stage', `stage${currentChecklistIndex + 1}`);
-      formData.append('_id', uploadId);
+      const imageKey = `${currentChecklistIndex}-${currentImageIndex}-${currentImagePart || 'main'}`;
 
-      const headers = {
-        'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
-      };
-  
-  
-      const url = 'https://live-api.instavans.com/api/thor/security/save_stage_images';
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: headers
-      });
-  
-  
-      const responseText = await response.text();
-  
-      if (!response.ok) {
-        let errorMessage = 'Server error';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = JSON.stringify(errorData);
-        } catch (e) {
-          errorMessage = responseText;
-        }
-        throw new Error(`Server error: ${errorMessage}`);
-      }
-  
-      const data = JSON.parse(responseText);
+      setLocalImages(prev => ({ ...prev, [imageKey]: imageSrc }));
   
       const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][currentChecklistIndex];
       setChecklist((prevChecklists: any) => {
@@ -473,231 +486,518 @@ const [checklists4, setChecklists4] = useState([
         }
         return newChecklists;
       });
-
-    toast.success('Image uploaded successfully');
-    }  catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error(`Error uploading image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  
+      toast.success('Image captured successfully');
+    } catch (error) {
+      console.error('Error capturing image:', error);
+      toast.error(`Error capturing image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsUploading(false);
       setShowCamera(false);
     }
   };
 
-  const handleCloseCamera = () => {
-    setShowCamera(false);
-    setCurrentImageIndex(null);
-    setCurrentImagePart(null);
+  const YesNoSelection: React.FC<{
+    value: string;
+    onChange: (value: string) => void;
+    disabled?: boolean;
+    label?: string;
+  }> = ({ value, onChange, disabled = false, label = "Select" }) => (
+    <FormControl component="fieldset" disabled={disabled}>
+      <FormLabel component="legend">{label}</FormLabel>
+      <RadioGroup row value={value} onChange={(e) => onChange(e.target.value)}>
+        <FormControlLabel value="Yes" control={<Radio />} label="Yes" />
+        <FormControlLabel value="No" control={<Radio />} label="No" />
+      </RadioGroup>
+    </FormControl>
+  );
+
+  function getYesNoValue(item: any, index: number): string {
+    return item[`yesNo${index}`] || '';
+  }
+  
+  
+  const handleYesNoChange = (uploadIndex: number, value: string, field: string) => {
+    setChecklists3((prevChecklists: any) => {
+      const newChecklists = [...prevChecklists];
+      newChecklists[uploadIndex] = { ...newChecklists[uploadIndex], [field]: value };
+      if (value === "No" && (field === "yesNo2" || field === "yesNo3")) {
+        newChecklists[uploadIndex][field.replace("yesNo", "input")] = "";
+      }
+      return newChecklists;
+    });
+  };
+  
+  const handleInputChange = (uploadIndex: number, value: string, field: string) => {
+    setChecklists3((prevChecklists: any) => {
+      const newChecklists = [...prevChecklists];
+      newChecklists[uploadIndex] = { ...newChecklists[uploadIndex], [field]: value };
+      return newChecklists;
+    });
   };
 
-  const handleInputChange = async (checklistIndex: number, itemIndex: number, value: string, field: string) => {
+  const saveImagesToServer = async (checklistIndex: number, itemIndex: number) => {
     try {
-      let formattedValue = value;
-      if (checklistIndex === 4 && itemIndex === 1 && field === 'inputValue') {
-        formattedValue = formattedValue.replace(/[^a-zA-Z0-9]/g, '');
+      setIsUploading(true);
+  
+      if (!session?.user?.data?.accessToken) {
+        throw new Error('Authentication token is missing');
+      }
+  
+      const uploadId = securityCheck?._id || vehicleNo;
+      if (!uploadId) {
+        throw new Error('No valid ID for upload');
+      }
+  
+      const checklists = [checklists0, checklists1, checklists2, checklists3, checklists4];
+      
+      const currentChecklist = checklists[checklistIndex];
+      
+      if (!currentChecklist) {
+        throw new Error('Invalid checklist index');
+      }
+  
+      const currentItem: ChecklistItem = currentChecklist[itemIndex];
+      let imagesToUpload: {[key: string]: string} = {};
+  
+      if ('images' in currentItem && currentItem.images !== undefined) {
+        imagesToUpload = Object.entries(currentItem.images || {})
+          .filter(([part, image]) => {
+            const imageKey = `${checklistIndex}-${itemIndex}-${part}`;
+            return localImages[imageKey] && !submittedImages[imageKey];
+          })
+          .reduce((acc, [part, image]) => ({ ...acc, [part]: image }), {});
+      } else if (currentItem.image) {
+        const imageKey = `${checklistIndex}-${itemIndex}-main`;
+        if (localImages[imageKey] && !submittedImages[imageKey]) {
+          imagesToUpload = { main: currentItem.image };
+        }
+      }
 
-        let result = '';
-        for (let i = 0; i < formattedValue.length; i += 10) {
-          if (result.length > 0) {
-            result += ',';
-          }
-          result += formattedValue.substring(i, i + 10);
+      for (let [part, image] of Object.entries(imagesToUpload)) {
+        if (!image || image.startsWith('https://')) continue;
+
+        const formData = new FormData();
+        formData.append('images', dataURItoBlob(image), 'image.jpg');
+        formData.append('stage', `stage${itemIndex + 1}`);
+        formData.append('_id', uploadId);
+
+        formData.append('pointName', currentItem.point);
+        formData.append('imageSubname', part);
+  
+        const headers = {
+          'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
+        };
+
+        const url = 'https://dev-api.instavans.com/api/thor/security/save_stage_images';
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          headers: headers
+        });
+        if (!response.ok) {
+          throw new Error(`Server error: ${await response.text()}`);
         }
 
-        formattedValue = result.slice(0, 55);
+        const data = await response.json();
+
+        if (data && data.data && Array.isArray(data.data) && data.data.length > 0) {
+          const s3Link = data.data[0];
+          if (!imageUrls[currentItem.point]) {
+            imageUrls[currentItem.point] = {};
+          }
+          imageUrls[currentItem.point][part] = s3Link;
+        } 
+      else {
+        console.error('Unexpected server response:', data);
+        throw new Error('Unexpected server response format');
       }
-      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][checklistIndex];
-      setChecklist((prevChecklists: any) => {
-        const newChecklists = [...prevChecklists];
-        newChecklists[itemIndex] = { ...newChecklists[itemIndex], [field]: formattedValue };
-        return newChecklists;
-      });
-
-      const response = await fetch('https://live-api.instavans.com/api/v1/security/update_checklist_item', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
-        },
-        body: JSON.stringify({
-          _id: securityCheck._id,
-          checklistIndex,
-          itemIndex,
-          field: 'inputValue',
-          value: formattedValue,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update input');
       }
+      setImageUrls({...imageUrls});
 
-      const updatedSecurityCheck = await response.json();
+      const updatedChecklists = [...checklists];
+      const updatedItem = { ...updatedChecklists[checklistIndex][itemIndex] };
+      if ('images' in updatedItem) {
+        updatedItem.images = imageUrls[currentItem.point];
+      } else if ('image' in updatedItem) {
+        updatedItem.image = imageUrls[currentItem.point].main;
+      }
+      updatedChecklists[checklistIndex][itemIndex] = updatedItem;
 
-      toast.success('Input updated successfully');
-    } catch (error) {
-      console.error('Error updating input:', error);
-      toast.error('Failed to update input');
+    switch(checklistIndex) {
+      case 0: setChecklists0(updatedChecklists[0]); break;
+      case 1: setChecklists1(updatedChecklists[1]); break;
+      case 2: setChecklists2(updatedChecklists[2]); break;
+      case 3: setChecklists3(updatedChecklists[3]); break;
+      case 4: setChecklists4(updatedChecklists[4]); break;
     }
+
+  
+      const newSubmittedImages = { ...submittedImages };
+      if ('images' in currentItem) {
+        Object.keys(currentItem.images || {}).forEach(part => {
+          const imageKey = `${checklistIndex}-${itemIndex}-${part}`;
+          if (localImages[imageKey]) {
+            newSubmittedImages[imageKey] = true;
+          }
+        });
+      } else if (currentItem.image) {
+        const imageKey = `${checklistIndex}-${itemIndex}-main`;
+        if (localImages[imageKey]) {
+          newSubmittedImages[imageKey] = true;
+        }
+      }
+      setSubmittedImages(newSubmittedImages);
+  
+      setLocalImages({});
+      return updatedItem;
+
+      // toast.success('Images uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      if (error instanceof Error) {
+        if (error.message === 'Unexpected server response format') {
+          toast.warning('Image uploaded, but server response was unexpected. Using original image URL.');
+        } else {
+          toast.error(`Error uploading images: ${error.message}`);
+        }
+      } else {
+        toast.error('An unknown error occurred while uploading images');
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  
+  
+
+  useEffect(() => {
+    const stageKey = `stage${activeStep + 1}`;
+    const currentChecklist = [checklists0, checklists1, checklists2, checklists3, checklists4][activeStep];
+  
+    if (!previousStageData[stageKey]) {
+      const checklistData = getChecklistForStage(activeStep + 1, currentChecklist);
+  
+      setPreviousStageData((prev: any) => {
+        const newData = {
+          ...prev,
+          [stageKey]: checklistData,
+        };
+        return newData;
+      });
+    }
+  }, [activeStep, previousStageData]); 
+  
+
+  useEffect(() => {
+    const checklists = [checklists0,checklists1, checklists2, checklists3, checklists4];
+    const currentChecklist = checklists[2];
+  }, [currentChecklistIndex, currentUploadIndex]);
+  
+
+  const getChecklistForStage = (stage: number, checklist: ChecklistItem[]): any[] => {
+    switch (stage) {
+      case 1:
+        return checklist.map((item, index) => {
+          const result: any = {
+            point: item.point
+          };
+          if (item.dropdown !== undefined) result.dropdown = item.dropdown;
+          if (item.inputValue !== undefined) result.inputValue = item.inputValue;
+          if (item.images && Object.values(item.images).some(img => img)) result.images = item.images;
+          if (item.image) result.image = item.image;
+          if (item.dropdownDisabled !== undefined) result.dropdownDisabled = item.dropdownDisabled;
+          if (item.date !== undefined) result.date = item.date;
+
+          return result;
+        });
+      case 2:
+        return checklist.map(item => {
+          const result: any = {
+            point: item.point
+          };
+          if (item.checked !== undefined) result.checked = item.checked;
+          else result.checked = false;  
+          result.timestamp = new Date();  
+          return result;
+        });
+      case 3:
+        return checklist.map(item => {
+          const result: any = {
+            point: item.point
+          };
+          if (item.dropdown !== undefined) result.dropdown = item.dropdown;
+          if (item.inputValue !== undefined) result.inputValue = item.inputValue;
+          if (item.images && Object.values(item.images).some(img => img)) result.images = item.images;
+          if (item.dropdownDisabled !== undefined) result.dropdownDisabled = item.dropdownDisabled;
+
+
+          return result;
+        });
+        case 4:
+          return checklist.map((item, index) => {
+
+            const result: any = {
+              point: item.point
+            };
+
+            if (item.subItems) {
+              result.subItems = item.subItems.map((subItem: { point: string }) => ({
+                point: subItem.point
+              }));
+            }
+          
+            if (index === 0) {
+              result.dropdown = item.dropdown;
+              result.images = item.images;
+            }
+
+            if ( index === 1) {
+              result.dropdown = item.dropdown;
+            }
+            
+          
+            if (index === 2) {
+              result.dropdown = item.dropdown;
+              result.image = item.image;
+            }
+            
+          
+            if (index === 3 ) {
+              result.image = item.image;
+            }
+            
+        
+            if (index === 4 && item.subItems) {
+              result.subItems = item.subItems.map(subItem => ({
+                point: subItem.point,
+                dropdown: subItem.dropdown,
+                inputValue: subItem.inputValue
+              }));
+            }
+            
+            return result ;
+          });
+    
+          case 5:
+            return checklist.map((item, index) => {
+              const result: any = {
+                point: item.point
+              };
+              
+            
+              if (index === 0) {
+                result.dropdown = item.dropdown;
+                result.image = item.image;
+                if (item.inputValue !== undefined) result.inputValue = item.inputValue;
+              }
+              
+     
+              if (index === 1) {
+                result.inputValue = item.inputValue;
+              }
+              
+          
+              if (index === 2) {
+                result.dropdown = item.dropdown;
+              }
+              
+              return result;
+            });
+      default:
+        return checklist;
+    }
+  };
+
+  const formatDate = (date: dayjs.Dayjs | Date | string | null | undefined): string | undefined => {
+    if (dayjs.isDayjs(date)) {
+      return date.toISOString();
+    } else if (date instanceof Date) {
+      return date.toISOString();
+    } else if (typeof date === 'string') {
+      const parsedDate = dayjs(date);
+      return parsedDate.isValid() ? parsedDate.toISOString() : undefined;
+    }
+    return undefined;
+  };
+
+  // const appendImages = (formData: FormData, files: { preview: string; name: string }[]): boolean => {
+  //   let imagesAdded = false;
+  //   files.forEach(file => {
+  //     const blob = dataURItoBlob(file.preview);
+  //     formData.append('images', blob, file.name);
+  //     imagesAdded = true;
+  //   });
+  //   return imagesAdded;
+  // };
+
+  const isDropdownNotDone = () => {
+    const finalTruckSealing = checklists4.find(item => item.point.includes("Has the final truck sealing been completed"));
+    return finalTruckSealing ? finalTruckSealing.dropdown !== 'Yes' : true;
+  };
+  const handlePageSpecificSave = () => {
+    if (isDropdownNotDone()) {
+      toast.warn('Final truck sealing is not completed. Please ensure it is done before saving.', {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
+      return;
+    }
+    handleSave();
   };
 
   const handleSave = async () => {
+    if (isUploading) {
+      return;
+    }
+    const currentStage = activeStep + 1;
+    const stageName = `stage${currentStage}`;
+    const currentChecklist = [checklists0, checklists1, checklists2, checklists3, checklists4][activeStep];
+
+  
+    let currentStageData = getChecklistForStage(currentStage, currentChecklist);
+  
+    currentStageData = currentStageData.map(item => {
+      const newItem = { ...item };
+      if (imageUrls[item.point]) {
+        if (typeof imageUrls[item.point] === 'object') {
+          const imageKeys = Object.keys(imageUrls[item.point]);
+          if (imageKeys.length === 1) {
+            newItem.image = imageUrls[item.point][imageKeys[0]];
+          } else {
+            newItem.images = imageUrls[item.point];
+          }
+        } else {
+          newItem.image = imageUrls[item.point];
+        }
+      } else {
+        // console.log(`No imageUrl found for ${item.point}`);
+      }
+    
+      if (newItem.image && typeof newItem.image === 'string' && newItem.image.startsWith('data:image')) {
+        delete newItem.image;
+      }
+      if (newItem.images) {
+        newItem.images = Object.fromEntries(
+          Object.entries(newItem.images).filter(([key, value]) => typeof value === 'string' && !value.startsWith('data:image'))
+        );
+        const imageKeys = Object.keys(newItem.images);
+        if (imageKeys.length === 1) {
+          newItem.image = newItem.images[imageKeys[0]];
+          delete newItem.images;
+        }
+      }
+    
+      return newItem;
+    });
+  
+    setLocalStageSaves(prev => ({
+      ...prev,
+      [stageName]: currentStageData
+    }));
+  
+    const isValid = validateFields(currentStageData, currentStage);
+  
+    if (!isValid) {
+      return;
+    }
+  
+    let hasChanges = false;
+  
+    if (currentStage === 2) {
+      hasChanges = currentStageData.some((item, index) => {
+        const prevItem = previousStageData[stageName]?.[index];
+        return prevItem === undefined || 
+               item.checked !== prevItem.checked;
+      });
+    } else {
+      hasChanges = JSON.stringify(currentStageData) !== JSON.stringify(previousStageData[stageName] || []);
+    }
+  
+    if (!hasChanges && !hasUnsavedChanges) {
+      toast.info('No changes detected.', {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
+      return;
+    }
+  
+    const allFieldsFilled = currentStageData.every(item => {
+      if (item.image !== undefined && !item.image) return false;
+      if (item.images !== undefined && Object.values(item.images).some(img => !img)) return false;
+      if (item.inputValue !== undefined && !item.inputValue) return false;
+      if (item.date !== undefined && !item.date) return false;
+      if (item.dropdown !== undefined && !item.dropdown) return false;
+      return true;
+    });
+
+  
+    if (!allFieldsFilled) {
+      toast.success('Data Saved!', {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "light",
+      });
+    }
+  
     let images = false;
-    let formData:any = new FormData();
-    const checklists = [checklists0, checklists1, checklists2, checklists3, checklists4];
-    let payload: any;
-  
-    const appendImages = (files: { preview: string; name: string }[]) => {
-      for (let i = 0; i < files.length; i++) {
-        formData.append('images', dataURItoBlob(files[i].preview), files[i].name);
-        images = true;
+    let formData = new FormData();
+    let payload: any = {
+      _id: securityCheck._id,
+      stage: stageName,
+      [stageName]: {
+        name: steps[activeStep],
+        checklist: currentStageData,
+        completed: true,
+        completed_at: new Date().toISOString(),
+        security: session?.user.data._id,
       }
     };
+
+    console.log("89", payload)
   
-    const getChecklistForStage = (stage: number, checklist: any[]) => {
-      switch (stage) {
-        case 0: 
-          return checklist.map(item => ({
-            point: item.point,
-            dropdown: item.dropdown,
-            inputValue: item.inputValue,
-            images: item.images,
-            image: item.image,
-            dropdownDisabled: item.dropdownDisabled,
-            validityDate: item.validityDate,
-            validityEndDate: item.validityEndDate
-          }));
-        case 1:
-          return checklist.map(item => ({
-            point: item.point,
-            checked: item.checked,
-            timestamp: new Date()
-          }));
-        case 2: 
-          return checklist.map(item => ({
-            point: item.point,
-            dropdown: item.dropdown,
-            inputValue: item.inputValue,
-            images: item.images,
-            dropdownDisabled: item.dropdownDisabled,
-          }));
-        case 3: 
-          return checklist.map(item => ({
-            point: item.point,
-            dropdown: item.dropdown,
-            inputValue: item.inputValue,
-            images: item.images,
-            dropdownDisabled: item.dropdownDisabled,
-            image: item.image,
-            subItems: item.subItems?.map((subItem: { name: any; dropdown: any; }) => ({
-              name: subItem.name,
-              dropdown: subItem.dropdown
-            }))
-          }));
-        case 4: 
-          return checklist.map(item => ({
-            point: item.point,
-            dropdown: item.dropdown,
-            inputValue: item.inputValue,
-            image: item.image,
-            dropdownDisabled: item.dropdownDisabled
-          }));
-        default:
-          return [];
-      }
-    };
-  
-    switch (activeStep) {
-      case 0:
-        appendImages(vehcileReportingFiles);
-        formData.append('stage', 'stage1');
-        formData.append('_id', securityCheck._id);
-        payload = {
-          _id: securityCheck._id,
-          stage1: {
-            name: 'Vehicle identity and reporting',
-            checklist: getChecklistForStage(0, checklists0),
-            completed: true,
-            completed_at: new Date(),
-            security: session?.user.data._id,
-          },
-          vehicle_reporting_date: reportingDate,
-        };
-        break;
-  
+    switch (currentStage) {
       case 1:
-        appendImages(vehcileGateInFiles);
-        formData.append('stage', 'stage2');
-        formData.append('_id', securityCheck._id);
-        payload = {
-          _id: securityCheck._id,
-          stage2: {
-            name: 'Vehicle gate in',
-            checklist: getChecklistForStage(1, checklists1),
-            completed: true,
-            completed_at: new Date(),
-            security: session?.user.data._id,
-          },
-          vehicle_gate_in_date: gateInDate,
-        };
+        payload.vehicle_reporting_date = formatDate(reportingDate);
         break;
-  
       case 2:
-        appendImages(vehcileLoadInFiles);
-        formData.append('stage', 'stage3');
-        formData.append('_id', securityCheck._id);
-        payload = {
-          _id: securityCheck._id,
-          stage3: {
-            name: 'Loading in and billing activity',
-            checklist: getChecklistForStage(2, checklists2),
-            completed: true,
-            completed_at: new Date(),
-            security: session?.user.data._id,
-          },
-          load_in_date: loadInDate,
-        };
+        payload.vehicle_gate_in_date = formatDate(gateInDate);
         break;
-  
       case 3:
-        appendImages(vehcileLoadOutFiles);
-        formData.append('stage', 'stage4');
-        formData.append('_id', securityCheck._id);
-        payload = {
-          _id: securityCheck._id,
-          stage4: {
-            name: 'Loading out and billing activity',
-            checklist: getChecklistForStage(3, checklists3),
-            completed: true,
-            completed_at: new Date(),
-            security: session?.user.data._id,
-          },
-          load_out_date: loadOutDate,
-        };
+        payload.load_in_date = formatDate(loadInDate);
         break;
-  
       case 4:
-        appendImages(vehcileGateOutFiles);
-        formData.append('stage', 'stage5');
-        formData.append('_id', securityCheck._id);
-        payload = {
-          _id: securityCheck._id,
-          stage5: {
-            name: 'Vehicle gate out activity',
-            checklist: getChecklistForStage(4, checklists4),
-            completed: true,
-            completed_at: new Date(),
-            security: session?.user.data._id,
-          },
-          vehicle_gate_out_date: gateOutDate,
-          finished_at: new Date(),
-        };
+        payload.load_out_date = formatDate(loadOutDate);
+        break;
+      case 5:
+        payload.vehicle_gate_out_date = formatDate(gateOutDate);
+        payload.finished_at = new Date().toISOString();
         break;
     }
   
-    if ((payload[`stage${activeStep + 1}`].checklist.length && payload[`stage${activeStep + 1}`].checklist.filter((c: any) => !c.checked).length === 0) || activeStep === 0) {
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/save_stage', {
+
+    
+  
+    try {
+  
+      const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -705,9 +1005,11 @@ const [checklists4, setChecklists4] = useState([
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
         }
       });
+  
       const data = await response.json();
-      if (data.statusCode === 200) {
-        toast.success('🦄 Data saved!', {
+
+      if(response.status === 400){
+        toast.success('Data saved!', {
           position: "top-center",
           autoClose: 5000,
           hideProgressBar: false,
@@ -716,25 +1018,429 @@ const [checklists4, setChecklists4] = useState([
           draggable: true,
           progress: undefined,
           theme: "light",
-        })
-      
+        });
+      }
+  
+      if (response.ok) {
+        toast.success('Data saved!', {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
+  
+        if (images) {
+          await handleImageUpload(formData);
+        }
+  
+        setPreviousStageData((prev: any) => ({
+          ...prev,
+          [stageName]: JSON.parse(JSON.stringify(currentStageData))
+        }));
+        setLocalStageSaves(prev => {
+          const newSaves = { ...prev };
+          delete newSaves[stageName];
+          return newSaves;
+        });
+      } 
+      else if (response.status === 401) {
+        toast.error('You are unauthorized. Unable to save data.', {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
       } else {
-        toast.error(data.error.message, { hideProgressBar: true, autoClose: 2000, type: 'error' });
+        throw new Error('Unexpected error occurred');
+      }
+    } catch (error: unknown) {
+      console.error('Error saving data:', error);
+    }
+  };
+
+  const handleNext = async () => {
+    const currentStage = activeStep + 1;
+    const stageName = `stage${currentStage}`;
+    const currentChecklist = [checklists0, checklists1, checklists2, checklists3, checklists4][activeStep];
+    const currentStageData = getChecklistForStage(currentStage, currentChecklist);
+    const isValid = validateFields(currentStageData, currentStage);
+  
+    if (isValid) {
+      let missingMandatoryFields: string[] = [];
+  
+      if (currentStage === 1) {
+        missingMandatoryFields = currentStageData.filter(item => {
+          if (item.point === "8.Screening Driver to check wheather the person is under alocohol influence or not ?") {
+            if (!item.dropdown) {
+              return true; 
+            }
+            if (item.dropdown === "Yes" && !item.image) {
+              return true;
+            }
+            return false; 
+          }
+      
+          const requiresInput = item.inputValue !== undefined && !item.inputValue;
+          const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
+          const requiresImages = item.images !== undefined && Object.values(item.images || {}).some(img => !img);
+          const requiresImage = item.image !== undefined && !item.image;
+          const requiresDate = item.date !== undefined && !item.date;
+
+          const pointsRequiringImage = [
+            "Point1",
+            "Point2",
+            "Point3",
+            "Point4",
+            "Point5",
+            "Point6"
+          ];
+    
+          const requiresImageForPoint = pointsRequiringImage.includes(item.point) || !item.image;
+  
+          return requiresInput || requiresDropdown || requiresImages || requiresImage || requiresImageForPoint || requiresDate;
+        }).map(item => item.point);
+  
+        if (!reportingDate || !dayjs(reportingDate).isValid()) {
+          missingMandatoryFields.push("Vehicle reporting date");
+        }
+        if (missingMandatoryFields.length > 0) {
+          const missingFields = missingMandatoryFields.join(', ');
+          toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "light",
+          });
+          return;
+        }
+      } else if (currentStage === 2) {
+        missingMandatoryFields = currentStageData.filter(item => item.checked === false).map(item => `Checkbox for ${item.point}`);
+      }
+       else if (currentStage === 3) {
+        missingMandatoryFields = currentStageData.filter(item => {
+          const requiresInput = item.inputValue !== undefined && !item.inputValue;
+          const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
+          const requiresImages = item.images !== undefined && Object.values(item.images || {}).some(img => !img);
+
+
+          return requiresInput || requiresDropdown || requiresImages;
+        }).map(item => item.point);
+        if (missingMandatoryFields.length > 0) {
+          const missingFields = missingMandatoryFields.join(', ');
+          toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "light",
+          });
+          return;
+        }
+      } 
+      else if (currentStage === 4) {
+        missingMandatoryFields = currentStageData.flatMap((item, index) => {
+          const missingFields = [];
+      
+          if (index === 0) {
+            if (!item.dropdown || !item.images || Object.values(item.images).some(img => !img)) {
+              missingFields.push(item.point);
+            }
+          } else if (index === 1) {
+            if (!item.dropdown) {
+              missingFields.push(item.point);
+            }
+          } else if (index === 2) {
+            if (!item.dropdown || !item.image) {
+              missingFields.push(item.point);
+            }
+          } 
+          // else if (index === 3) {
+          //   if (!item.image) {
+          //     missingFields.push(item.point);
+          //   }
+          // }
+           else if (index === 4) {
+            const subPoints = [
+              "1.Has the Invoice Document been provided?",
+              "2.Has a valid E-way Bill been provided (if applicable)?",
+              "3.Has the Material Test Certificate (MTC) been provided (if applicable)?",
+              "4.Has the Lorry Receipt (LR) Slip or Docket Slip been provided?"
+            ];
+
+            if (!item.subItems[0].dropdown  || (item.subItems[0].dropdown  === "Yes" && !item.subItems[0].inputValue)) missingFields.push(subPoints[0]);
+            
+            if (!item.subItems[3].dropdown || (item.subItems[3].dropdown === "Yes" && !item.subItems[3].inputValue)) missingFields.push(subPoints[3]);
+
+            if (item.subItems[1].dropdown  === "Yes" && !item.subItems[1].inputValue) missingFields.push(subPoints[1]);
+
+            if (item.subItems[2].dropdown  === "Yes" && !item.subItems[2].inputValue) missingFields.push(subPoints[2]);
+          }
+      
+          return missingFields;
+          
+        });
+      } else if (currentStage === 5) {
+        missingMandatoryFields = currentStageData.filter(item => {
+          const requiresInput = item.inputValue !== undefined && !item.inputValue;
+          const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
+          const requiresImage = item.image !== undefined && !item.image;
+  
+          if (item.point === "1.Has the final truck sealing been completed, and what is the Seal Number (if applicable)?") {
+            return requiresDropdown || requiresImage 
+          } else {
+            return requiresInput || requiresDropdown || requiresImage;
+          }
+        }).map(item => {
+          if (item.point === "Point1" && item.inputValue === undefined) {
+            return "Input box for Point1";
+          } else if (item.inputValue === undefined) {
+            return `Input box for ${item.point}`;
+          } else if (item.dropdown === undefined) {
+            return `Selection for ${item.point}`;
+          } else if (item.image === undefined) {
+            return `Image for ${item.point}`;
+          } else {
+            return item.point;
+          }
+        });
+        if (missingMandatoryFields.length > 0) {
+          const missingFields = missingMandatoryFields.join(', ');
+          toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "light",
+          });
+          return;
+        }
+      } else {
+        missingMandatoryFields = currentStageData.filter(item => !validateFields([item], currentStage)).map(item => item.point);
+      }
+  
+      if (missingMandatoryFields.length > 0) {
+        const missingFields = missingMandatoryFields.join(', ');
+        toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
+        return;
+      }
+  
+      let hasChanges = false;
+  
+      if (currentStage === 2) {
+        hasChanges = hasCheckboxChanges(currentStageData, previousStageData[stageName]);
+      } else {
+        hasChanges = JSON.stringify(currentStageData) !== JSON.stringify(previousStageData[stageName] || []);
+      }
+
+      if (hasChanges) {
+        toast.warn('You have unsaved changes. Please save your changes before proceeding.', {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "light",
+        });
+        // setHasUnsavedChanges(true);
+        return; 
+      }
+  
+      if (activeStep === steps.length - 1) {
+        router.push('/completed');
+      } else {
+        setActiveStep((prevActiveStep) => prevActiveStep + 1);
+        setIsCurrentStageSaved(true);
       }
     } else {
-      toast.error('Please check all checkpoints', { hideProgressBar: true, autoClose: 2000, type: 'error' });
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      setIsCurrentStageSaved(true);
     }
-    if (images) {
-      const imageResponse = await fetch('https://live-api.instavans.com/api/thor/security/save_stage_images', {
+  };
+  
+  const validateFields = (stageData: any[], stage: number): boolean => {
+    switch (stage) {
+      case 1:
+        return stageData.every(item => {
+          switch (item.point) {
+            case "Is the vehicle body in satisfactory condition for transport?":
+              return !!item.dropdown && Object.values(item.images).every(img => !!img);
+            case "Does the vehicle have the required 3 tarpaulins for cargo protection?":
+              return !!item.dropdown && !!item.image;
+            case "Are the tarpaulins in good condition and stitchless as per company standards?":
+              return !!item.dropdown && !!item.image;
+            case "Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?":
+              return !!item.dropdown && !!item.image && !!item.date;
+            case "Has the vehicle's Fitness Certificate been confirmed as current and valid?":
+              return !!item.dropdown && !!item.image && !!item.date;
+            case "What is the verified carrying capacity of the vehicle in kilograms?":
+              return !!item.inputValue && !!item.image;
+            case "What is the driver's license number and expiration date of the driver's license?":
+              return !!item.inputValue && !!item.date;
+            case "Screening Driver to check wheather the person is under alocohol influence or not ?":
+                if (!item.dropdown) {
+                  return false; 
+                }
+                if (item.dropdown === "Yes" && !item.image) {
+                  return false; 
+                }
+                return true;
+      default:
+        return true;
+          }
+        });
+      case 2:
+        return stageData.every(item => item.checked !== undefined);
+      case 3:
+          return stageData.every(item => {
+              switch (item.point) {
+                  case "Has the vehicle body been re-inspected and confirmed to be in good condition?":
+                      return !!item.dropdown && Object.values(item.images).every(img => !!img);
+                  case "Is the tarpaulin properly covering the entire bottom surface of the truck prior to loading?":
+                      return !!item.dropdown && Object.values(item.images).every(img => !!img);
+                  case "Has the cross-check between Pick Up Slip weight and Vehicle Passing weight been completed? (In Kgs)":
+                      return !!item.dropdown && !!item.inputValue;
+                  default:
+                      return true;
+          }
+      });
+      case 4:
+        return stageData.every(item => {
+          switch (item.point) {
+            case "Has the layer-wise loading and stuffing been executed according to the approved Stacking Plan?":
+              return !!item.dropdown && Object.values(item.images).some(img => !!img);
+            case "Does the quantity of loaded material correspond precisely with the quantity listed in the Pick up List?":
+              return !!item.dropdown;
+            case "Has the truck been properly sealed, and if so, what is the Seal Number?":
+              return !!item.dropdown && !!item.image;
+            case "What is the final loaded weight in kilograms as shown in the provided image, and does the image include the Weigh Bridge Slip, if applicable?":
+              return !!item.image;
+            case "Have all required documents been provided and verified?":
+              if (item.subItems[0].dropdown !== null && item.subItems[3].dropdown !== null) {
+                return !!item.subItems[0].inputValue && !!item.subItems[3].inputValue;
+              }
+              return false;
+            default:
+              return true;
+          }
+        });
+      case 5:
+        return stageData.every(item => {
+          switch (item.point) {
+            case "Has the final truck sealing been completed, and what is the Seal Number (if applicable)?":
+              return !!item.dropdown && !!item.image;
+            case "What are the Commercial Invoice Numbers associated with this shipment?":
+              return !!item.inputValue;
+            case "Have the E-way bill and Invoice been verified to have valid and current dates?":
+              return !!item.dropdown;
+            default:
+              return true;
+          }
+        });
+      default:
+        return true;
+    }
+  };
+  
+  const hasCheckboxChanges = (currentStageData: any[], previousStageData: any[]): boolean => {
+    return currentStageData.some((item, index) => {
+      const prevItem = previousStageData?.[index];
+      return prevItem === undefined || item.checked !== prevItem.checked;
+    });
+  };
+
+  const handleVehicleRejection = async (checklistItem: ChecklistItem, stage: number) => {
+    const emailContent = `
+      Reason for rejection: ${checklistItem.point}
+      Stage: ${stage}
+      * SO Number: ${shipment.sale_order}
+      * Vehicle Number: ${vehicleNo}
+      * Transporter Name: ${shipment?.carrier?.name}
+      * SIN Number: ${shipment.SIN}
+    `;
+
+    const confirmRejection = window.confirm(`Vehicle rejected due to: ${checklistItem.point}\nAn email will be sent to the transporter. Do you want to proceed?`);
+
+    if (confirmRejection) {
+      try {
+        await sendRejectionEmail(emailContent, stage);
+        alert("Rejection email sent successfully. The vehicle has been rejected.");
+      } catch (error) {
+        console.error("Failed to send rejection email:", error);
+        console.error('Error sending rejection email:', error);
+        alert("Failed to send rejection email. Please try again.");
+      }
+    }
+  };
+
+const sendRejectionEmail = async (emailContent: string, stage: number) => {
+  try {
+    const response = await fetch('https://dev-api.instavans.com/api/thor/security/send-rejection-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+      },
+      body: JSON.stringify({
+        emailContent,
+        stage: `Stage ${stage}`,
+        saleOrder: shipment.sale_order,
+        vehicleNo,
+          name: shipment?.carrier?.name,
+        SIN: shipment.SIN,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to send rejection email');
+    }
+  } catch (error) {
+    console.error('Error sending rejection email:', error);
+    throw error;
+  }
+};
+  
+  const handleImageUpload = async (formData: FormData) => {
+    try {
+      const imageResponse = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage_images', {
         method: 'POST',
         body: formData,
         headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
         }
       });
+  
       const imageData = await imageResponse.json();
+  
       if (imageData.statusCode === 200) {
-        toast.success('Data Saved', {
+        toast.success('Images Saved', {
           position: "top-center",
           autoClose: 5000,
           hideProgressBar: false,
@@ -743,13 +1449,16 @@ const [checklists4, setChecklists4] = useState([
           draggable: true,
           progress: undefined,
           theme: "light",
-        })
-      
+        });
       } else {
-        toast.error(imageData.message, { hideProgressBar: true, autoClose: 2000, type: 'error' });
+        toast.error(imageData.message || 'Error saving images', { hideProgressBar: true, autoClose: 2000, type: 'error' });
       }
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      toast.error('An error occurred while uploading images', { hideProgressBar: true, autoClose: 2000, type: 'error' });
     }
-  }
+  };
+  
   const dataURItoBlob = (dataURI: string) => {
     const byteString = atob(dataURI.split(',')[1]);
     const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
@@ -772,11 +1481,11 @@ const [checklists4, setChecklists4] = useState([
 
   useEffect(() => {
     const getVehicleData = async () => {
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+      const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
         method: 'GET',
         headers: {
-            'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
-            'Content-Type': 'application/json',
+          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
+          'Content-Type': 'application/json',
         },
       });
       const data = await response.json();
@@ -784,46 +1493,57 @@ const [checklists4, setChecklists4] = useState([
         const d = data.data.shipment;
         const trackingMethod = d.trip_tracker && d.trip_tracker.methods && d.trip_tracker.methods.length && d.trip_tracker.methods[0] || 'N/A';
         const lastLocation = d.trip_tracker && d.trip_tracker.last_location.address && d.trip_tracker.last_location.address || 'N/A';
-        const lastLocationAttr = d.trip_tracker && d.trip_tracker.last_location_at && lastLocationAt;
-
+        const lastLocationAt = d.trip_tracker && d.trip_tracker.last_location_at;
+  
         const security = data.data.securityCheck;
         if (security?.stage1?.completed === true) {
-          const checks = security.stage1.checklist.map((c: { point: any; checked: any; }) => {
-            return {
-              point: c.point,
-              checked: c.checked
-            }
-          });
+          const checks = security.stage1.checklist.map((c:any) => ({
+            point: c.point,
+            checked: c.checked,
+            dropdown: c.dropdown,
+            inputValue: c.inputValue,
+            timestamp: c.timestamp,
+            images: c.images,
+            image: c.image,
+            dropdownDisabled: c.dropdownDisabled,
+            date: c.date,
+            subItems: c.subItems
+          }));
           setChecklists0(checks.length > 0 ? checks : checklists0);
           setReportingDate(security.stage1.completed_at);
           setActiveStep(0);
           if (security.stage1.images?.length) {
             const newImages = security.stage1.images.map((i: any) => ({ name: i, preview: i }));
-            setVehcileReportingFiles(newImages);
+            setVehicleReportingFiles(newImages);
           }
         } 
         if (security?.stage2?.completed === true) {
-          const checks = security.stage2.checklist.map((c: { point: any; checked: any; }) => {
-            return {
-              point: c.point,
-              checked: c.checked
-            }
-          });
+          const checks = security.stage2.checklist.map((c: any) => ({
+            point: c.point,
+            checked: c.checked,
+            timestamp: c.timestamp,
+          }));
           setChecklists1(checks);
           setGateInDate(security.stage2.completed_at);
           setActiveStep(1);
           if (security.stage2.images?.length) {
-              const newImages = security.stage2.images.map((i: any) => ({ name: i, preview: i }));
+            const newImages = security.stage2.images.map((i: any) => ({ name: i, preview: i }));
             setVehcileGateInFiles(newImages);
           }
         } 
         if (security?.stage3?.completed === true) {
-          const checks = security.stage3.checklist.map((c: { point: any; checked: any; }) => {
-            return {
-              point: c.point,
-              checked: c.checked
-            }
-          });
+          const checks = security.stage3.checklist.map((c: any) => ({
+            point: c.point,
+            checked: c.checked,
+            dropdown: c.dropdown,
+            inputValue: c.inputValue,
+            timestamp: c.timestamp,
+            images: c.images,
+            image: c.image,
+            dropdownDisabled: c.dropdownDisabled,
+            date: c.date,
+            subItems: c.subItems
+          }));
           setChecklists2(checks);
           setLoadInDate(security.stage3.completed_at);
           setActiveStep(2);
@@ -833,14 +1553,24 @@ const [checklists4, setChecklists4] = useState([
           }
         } 
         if (security?.stage4?.completed === true) {
-          const checks = security.stage4.checklist.map((c: { point: any; checked: any; }) => {
-            return {
-              point: c.point,
-              checked: c.checked
-            }
-          });
+          const subItems = checklists3[4].subItems;
+          const checks = security.stage4.checklist.map((c: any, index: number) => ({
+            point: c.point,
+            dropdown: c.dropdown,
+            inputValue: c.inputValue,
+            images: c.images,
+            image: c.image,
+            dropdownDisabled: c.dropdownDisabled,
+            subItems: c.subItems?.map((subItem: any) => ({
+              point: subItem.point,
+              dropdown: subItem.dropdown,
+              inputValue: subItem.inputValue
+            }))
+          }));
+          if (checks.length > 0 && Array.isArray(checks[4].subItems) && checks[4].subItems.length === 0) {
+            checks[4].subItems = subItems;
+        }
           setChecklists3(checks);
-          setLoadOutDate(security.stage4.completed_at);
           setActiveStep(3);
           if (security.stage4.images?.length) {
             const newImages = security.stage4.images.map((i: any) => ({ name: i, preview: i }));
@@ -848,18 +1578,24 @@ const [checklists4, setChecklists4] = useState([
           }
         } 
         if (security?.stage5?.completed === true) {
-          const checks = security.stage5.checklist.map((c: { point: any; checked: any; }) => {
-            return {
-              point: c.point,
-              checked: c.checked
-            }
-          });
+          const checks = security.stage5.checklist.map((c: any) => ({
+            point: c.point,
+            checked: c.checked,
+            dropdown: c.dropdown,
+            inputValue: c.inputValue,
+            timestamp: c.timestamp,
+            images: c.images,
+            image: c.image,
+            dropdownDisabled: c.dropdownDisabled,
+            date: c.date,
+            subItems: c.subItems
+          }));
           setChecklists4(checks);
           setGateOutDate(security.stage5.completed_at);
           setActiveStep(4);
-           if (security.stage5.images?.length) {
+          if (security.stage5.images?.length) {
             const newImages = security.stage5.images.map((i: any) => ({ name: i, preview: i }));
-            setVehcileLoadOutFiles(newImages);
+            setVehcileGateOutFiles(newImages);
           }
         }
         setShipment(d);
@@ -879,46 +1615,11 @@ const [checklists4, setChecklists4] = useState([
   }, [vehicleNo]);
 
 
-  const handleCheckboxChange = async (listIndex: number, itemIndex: number, checked: boolean) => {
-    try {
-      const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][listIndex];
-      setChecklist((prev: any[]) => prev.map((item, i) =>
-        i === itemIndex ? { ...item, checked, inputValue: checked ? new Date().toLocaleString() : '' } : item
-      ));
-  
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/update_checklist_item', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
-        },
-        body: JSON.stringify({
-          _id: securityCheck._id,
-          checklistIndex: listIndex,
-          itemIndex,
-          field: 'checked',
-          value: checked,
-        }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update checkbox');
-      }
-  
-      const updatedSecurityCheck = await response.json();
-  
-      toast.success('Checkbox updated successfully');
-    } catch (error) {
-      console.error('Error updating checkbox:', error);
-      toast.error('Failed to update checkbox');
-    }
-  };
  
   const router = useRouter();
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    await fetch('https://dev-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -941,7 +1642,7 @@ const handleVehicleReportFileChange = (event: React.ChangeEvent<HTMLInputElement
     reader.onload = (e) => {
       fileArray.push({ name: file.name, preview: e.target!.result as string });
       if (fileArray.length === fileList!.length) {
-        setVehcileReportingFiles(fileArray);
+        setVehicleReportingFiles(fileArray);
       }
     };
 
@@ -1021,9 +1722,9 @@ const handleVehicleGateOutFileChange = (event: React.ChangeEvent<HTMLInputElemen
   }
 };
 const handleVehicleReportDeleteFile = (index: number) => {
-  const newFiles = [...vehcileReportingFiles];
+  const newFiles = [...vehicleReportingFiles];
   newFiles.splice(index, 1);
-  setVehcileReportingFiles(newFiles);
+  setVehicleReportingFiles(newFiles);
 };
 const handleVehicleGateInDeleteFile = (index: number) => {
   const newFiles = [...vehcileGateInFiles];
@@ -1045,9 +1746,9 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
   newFiles.splice(index, 1);
   setVehcileGateOutFiles(newFiles);
 };
+
   return (
     <><ToastContainer /><div className='flex flex-col w-full h-screen bg-[#F0F3F9]'>
-
 
       {shipment && <><div className='flex items-center justify-between bg-[#F0F3F9] h-[56px] w-full fixed z-[3] p-[10px] box-border'>
         <Button
@@ -1069,42 +1770,49 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
         </div>
 
       </div><div className='flex flex-col gap-[12px]'>
-          <Stepper activeStep={activeStep} alternativeLabel className='bg-[#fcfcfc] py-[10px] fixed z-[3] top-[56px] w-full'>
-            {steps.map((label, index) => {
-              const stepProps: { completed?: boolean; } = {};
-              const labelProps: {
-                optional?: React.ReactNode;
-              } = {};
-              return (
-                <Step key={label} {...stepProps}
-                sx={{
-          '& .MuiStepLabel-root .Mui-completed': {
-            color: '#18BE8A', // circle color (COMPLETED)
-                  },
-                  '& .css-z7uhs0-MuiStepConnector-line': {
-                    ...(activeStep > 3 && { borderColor: '#18BE8A' })
-                  },
-          '& .MuiStepLabel-label.Mui-completed.MuiStepLabel-alternativeLabel':
-            {
-              color: '#131722', // Just text label (COMPLETED)
-            },
-          '& .MuiStepLabel-root .Mui-active': {
-            color: '#18BE8A', // circle color (ACTIVE)
-          },
-          '& .MuiStepLabel-label.Mui-active.MuiStepLabel-alternativeLabel':
-            {
-              color: '#71747A', // Just text label (ACTIVE)
-            },
-          '& .MuiStepLabel-root .Mui-active .MuiStepIcon-text': {
-            fill: 'white', // circle's number (ACTIVE)
-          },
-        }}
-                >
-                  <StepLabel {...labelProps}>  <p className='text-[10px]'>{label}</p> </StepLabel>
-                </Step>
-              );
-            })}
-          </Stepper>
+      <Stepper
+        activeStep={activeStep}
+        alternativeLabel
+        className='bg-[#fcfcfc] py-[10px] fixed z-[3] top-[56px] w-full'
+      >
+        {steps.map((label, index) => {
+          const stepProps: { completed?: boolean } = {
+            completed: index < activeStep,
+          };
+          const labelProps: { optional?: React.ReactNode } = {};
+          return (
+            <Step
+              key={label}
+              {...stepProps}
+              sx={{
+                '& .MuiStepLabel-root .Mui-completed': {
+                  color: '#18BE8A', // circle color (COMPLETED)
+                },
+                '& .MuiStepConnector-line': {
+                  borderColor: index <= activeStep ? '#18BE8A' : '#e0e0e0', // line color based on step status
+                  borderWidth: '2px', // adjust the width of the line
+                },
+                '& .MuiStepLabel-label.Mui-completed.MuiStepLabel-alternativeLabel': {
+                  color: '##18BE8A', // Just text label (COMPLETED)
+                },
+                '& .MuiStepLabel-root .Mui-active': {
+                  color: '#18BE8A', // circle color (ACTIVE)
+                },
+                '& .MuiStepLabel-label.Mui-active.MuiStepLabel-alternativeLabel': {
+                  color: '#71747A', // Just text label (ACTIVE)
+                },
+                '& .MuiStepLabel-root .Mui-active .MuiStepIcon-text': {
+                  fill: 'white', // circle's number (ACTIVE)
+                },
+              }}
+            >
+              <StepLabel {...labelProps}>
+                <p className='text-[10px]'>{label}</p>
+              </StepLabel>
+            </Step>
+          );
+        })}
+      </Stepper>
           {activeStep === steps.length ? (
             <div>
               <Typography sx={{ mt: 2, mb: 1 }}>
@@ -1118,257 +1826,913 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
           ) : (
 
             <div className='flex flex-col gap-[12px] relative top-[156px] md:px-[80px] px-[24px]'>
-              {activeStep == 0 &&
-                <>
-                  <div className="top md:flex md:flex-row-reverse gap-[24px]">
-                  <div className="right w-full">
-                  <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                          <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
-                        </div>
-                        <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
-                        {checklists0.map((item, index) => (
-                        <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
-                        <div className="left-side flex-grow">
-                          <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
-                        </div>
-                        <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
-                            {index <= 4 && (
-                              <div className="custom-select" style={{
-                                marginBottom: '10px'
-                              }}>
-                                <select
-                                  value={item.dropdown || ''}
-                                  onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-                                    handleDropdownChange(0, index, event.target.value);
-                                  }}
-                                  disabled={!allImagesUploaded(item) || item.dropdownDisabled}
-                                  style={{ 
-                                    minWidth: '200px',
-                                    padding: '8px',
-                                    border: '1px solid #ccc',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    backgroundColor: !allImagesUploaded(item) || item.dropdownDisabled ? '#a9a9a9' : 'white', 
-                                    color: !allImagesUploaded(item) || item.dropdownDisabled ? '#555' : 'black', 
-                                    cursor: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer'
-                                  }}
-                                >
-                                  <option value="" disabled>{item.dropdown ? item.dropdown : 'Select'}</option>
-                                  {index === 4 ? (
-                                    <>
-                                      <option value="Valid">Valid</option>
-                                      <option value="Invalid">Invalid</option>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <option value="Yes">Yes</option>
-                                      <option value="No">No</option>
-                                    </>
-                                  )}
-                                </select>
-                              </div>
-                            )}
-                            {(index > 0 && index <= 5) && (
-                              <Grid container justifyContent="center">
-                                <Grid item>
-                                  <IconButton 
-                                    onClick={() => handleImageCapture(0, index)}
-                                    disabled={Boolean(item.image)}
-                                  >
-                                    {item.image ? (
-                                      <img src={item.image} alt="Captured" style={{width: '40px', height: '40px', borderRadius: '4px'}} />
-                                    ) : (
-                                      <CameraAltOutlinedIcon />
-                                    )}
-                                  </IconButton>
-                                  <Typography variant="caption">Camera</Typography>
-                                </Grid>
-                              </Grid>
-                            )}
-                            {index === 0 && (
-                              <Grid 
-                                container 
-                                spacing={1} 
-                                className="camera-icons"
-                                style={{
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  justifyContent: 'space-around',
-                                  maxWidth: '100%',
-                                  marginBottom: '16px',
-                                  paddingRight: '20px'
+             {activeStep == 0 && (
+        <>
+          <div className="top md:flex md:flex-row-reverse gap-[24px]">
+          <div className="right w-full">
+              <div className="checkList bg-[#fcfcfc] p-[20px] h-full rounded-[12px]">
+                <div className="body flex flex-col gap-[16px]">
+                  <div className="header">
+                    <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
+                  </div>
+                  <div className="checkListSection h-[450px] overflow-y-scroll">
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        <th className="text-left">Check points</th>
+                        <th>Yes</th>
+                        <th>No</th>
+                        <th>Images</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {checklists0.map((item, index) => (
+                        <tr key={index} className="border-b border-[#E6E8EC]">
+                          <td className="py-[12px]">
+                            <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
+                          </td>
+                          <td className="text-center">
+                            {index < 5 && (
+                              <input 
+                                type="radio" 
+                                name={`check-${index}`} 
+                                value="Yes" 
+                                checked={item.dropdown === "Yes"}
+                                onChange={() => {
+                                  const newChecklists = [...checklists0];
+                                  newChecklists[index].dropdown = "Yes";
+                                  setChecklists0(newChecklists);
                                 }}
-                              >
-                                {['Floor Body', 'Floor', 'Left', 'Right', 'Rear'].map(part => (
-                                  <Grid 
-                                    item 
-                                    xs={4} 
-                                    sm={4} 
-                                    key={part}
-                                    style={{
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      marginBottom: '8px'
-                                    }}
-                                  >
-                                    <IconButton 
-                                      onClick={() => handleImageCapture(0, index, part)}
-                                      style={{
-                                        padding: '4px',
-                                        marginBottom: '4px'
-                                      }}
-                                      disabled={Boolean(item.images && item.images[part])}
-                                    >
-                                      {item.images && item.images[part] ? (
-                                        <img 
-                                          src={item.images[part]} 
-                                          alt={part} 
-                                          style={{
-                                            width: '40px', 
-                                            height: '40px', 
-                                            objectFit: 'cover',
-                                            borderRadius: '4px'
-                                          }} 
-                                        />
-                                      ) : (
-                                        <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
-                                      )}
-                                    </IconButton>
-                                    <Typography 
-                                      variant="caption" 
-                                      style={{
-                                        fontSize: '10px',
-                                        textAlign: 'center',
-                                        lineHeight: '1.1',
-                                        maxWidth: '60px'
-                                      }}
-                                    >
-                                      {part}
-                                    </Typography>
-                                  </Grid>
-                                ))}
-                              </Grid>
+                                disabled={
+                                  (index === 0) 
+                                  ? !item.images || Object.values(item.images).some(img => !img)
+                                  : (index === 3 || index === 4) 
+                                    ? !item.image
+                                    : false
+                                }
+                              />
                             )}
-                            {(index >= 3 && index <= 7) && (
-                              <div style={{
-                                marginTop: '10px',
-                                width: '100%'
-                              }}>
-                                <input
-                                  type="text"
-                                  value={index === 3 ? item.validityDate : index === 4 ? item.validityEndDate : item.inputValue}
-                                  onChange={(e) => 
-                                    {
-                                      handleInputChange(0, index, e.target.value, index === 3 ? 'validityDate' : index === 4 ? 'validityEndDate' : 'inputValue')
-                                    }
-                                  }
-                                  placeholder={index === 3 ? "Validity Date" : index === 4 ? "Validity End Date" : item.point}
-                                  required
-                                  style={{
-                                    width: '200px',
-                                    paddingLeft: '10px',
-                                    height: '35px',
-                                    fontSize: '12px',
-                                    border: '1px solid #ccc',
-                                    padding: '5px',
-                                    boxSizing: 'border-box',
-                                    borderRadius: '4px'
-                                  }}
-                                />
-                              </div>
+                            { index == 7 && (
+                              <input 
+                              type="radio" 
+                              name={`check-${index}`} 
+                              value="Yes" 
+                              checked={item.dropdown === "Yes"}
+                              onChange={() => {
+                                const newChecklists = [...checklists0];
+                                newChecklists[index].dropdown = "Yes";
+                                setChecklists0(newChecklists);
+                              }}
+                            />
                             )}
-                          </div>
+                          </td>
+                        <td className="text-center">
+                          {index < 5 && (
+                            <input 
+                              type="radio" 
+                              name={`check-${index}`} 
+                              value="No" 
+                              checked={item.dropdown === "No"}
+                              onChange={() => {
+                                const newChecklists = [...checklists0];
+                                newChecklists[index].dropdown = "No";
+                                setChecklists0(newChecklists);
+                                if ((index === 0 || index === 4) && newChecklists[index].dropdown === "No") {
+                                  const photoEvidence = item.images ? Object.values(item.images).filter(Boolean) : (item.image ? [item.image] : []);
+                                  setIsRejectionDialogOpen(true);
+                                  setRejectionReason(`Point ${index === 0 ? '1-1' : '5-5'} failed inspection`);
+                                  setRejectedVehicleInfo({
+                                    vehicleNo: vehicleNo, 
+                                    saleOrder: "1", 
+                                    SIN: "2", 
+                                    transporterName: "aa",
+                                    photoEvidence: photoEvidence
+                                  });
+                                }
+                              }}
+                              disabled={
+                                (index === 0) 
+                                  ? !item.images || Object.values(item.images).some(img => !img)
+                                  : (index === 3 || index === 4) 
+                                    ? !item.image
+                                    : false
+                              }
+                            />
+                          )}
+                          { index == 7 && (
+                            <input 
+                            type="radio" 
+                            name={`check-${index}`} 
+                            value="No" 
+                            checked={item.dropdown === "No"}
+                            onChange={() => {
+                              const newChecklists = [...checklists0];
+                              newChecklists[index].dropdown = "No";
+                              setChecklists0(newChecklists);
+                            }}
+                          />
+                          )}
+                        </td>
+                          <td className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                    {index === 7 && item.dropdown === "Yes" && (
+                            <div className="flex items-center justify-center gap-2">
+                              <button 
+                                style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
+                                className="upload-button text-white px-2 py-1 rounded"
+                                onClick={() => {
+                                  setIsUploadPopupOpen(true);
+                                  setCurrentUploadIndex(index);
+                                  setCurrentChecklistIndex(0);
+                                }}
+                              > 
+                                <UploadIcon style={{width: "12px", height: "12px", marginRight: "4px", marginBottom: "3px"}} />
+                                Upload
+                              </button>
+                            </div>
+                          )}
+                      {index!=7 && (
+                        <div className="flex items-center justify-center gap-2">
+                        <button 
+                        style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
+                        className="upload-button text-white px-2 py-1 rounded"
+                        onClick={() => {
+                          setIsUploadPopupOpen(true);
+                          setCurrentUploadIndex(index);
+                          setCurrentChecklistIndex(0);
+                        }}
+                      > 
+                        <UploadIcon style={{width: "12px", height: "12px", marginRight: "4px", marginBottom: "3px"}} />
+                        Upload
+                      </button>
+                      </div>
+                      )}
+                      {((item.images && Object.values(item.images).filter(Boolean).length > 0) || item.image) && (
+                        <div className="relative">
+                          <img 
+                            src={item.images ? Object.values(item.images).find(Boolean) : item.image} 
+                            alt="Thumbnail" 
+                            className="w-8 h-8 object-cover rounded"
+                          />
+                          {item.images && Object.values(item.images).filter(Boolean).length > 1 && (
+                            <span className="absolute bottom-0 right-0 bg-gray-800 text-white text-xs px-1 rounded-full">
+                              +{Object.values(item.images).filter(Boolean).length - 1}
+                            </span>
+                          )}
                         </div>
+                      )}
+                    </div>
+                  </td>
+                        </tr>
                       ))}
-                        </div>
-
-                      </div>
+                    </tbody>
+                  </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="w-full md:w-1/3 flex flex-col gap-[16px]" >
+                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
+              <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
+                <div className="body">
+                  <div className="detailsSection">
+                    <div className="label">
+                      Vehicle reporting date
+                    </div>
+                    <div className="value">
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
+                          value={reportingDate}
+                          onChange={(newValue) => {
+                            setReportingDate(newValue);
+                          }}
+                          renderInput={(params) => <TextField {...params} />} />
+                      </LocalizationProvider>
                     </div>
                   </div>
-                  <div className="w-full md:w-1/3 flex flex-col gap-[16px]">
-                  <VehicleIdentity vehicleNo={vehicleNo} sin={shipment.SIN} soNumber={shipment.sale_order} materials={shipment.materials?.map((m: { name: any; }) => m.name).join(', ')} carrier={shipment?.carrier?.name}  />
-                  <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
-                    <div className="body">
-                      <div className="detailsSection">
-                        <div className="label">
-                          Vehicle reporting date
-                        </div>
-                        <div className="value">
-                          <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
-                              // label="For mobile"
-                              value={reportingDate}
-                              onChange={(newValue) => {
-                                setReportingDate(newValue);
-                              } }
-                              renderInput={(params) => <TextField {...params} />} />
-                          </LocalizationProvider>
-                        </div>
-                      </div>
+                </div>
+              </div>
+              <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
+                <div className="body flex flex-col gap-[16px]">
+                  <div className="header">
+                    <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
+                  </div>
+                  <div className="uploadSection flex gap-[16px]">
+                    <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                      <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
+                      <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
+                    </div>
+                    <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                      <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleReportFileChange} />
+                      <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
+                      <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
                     </div>
                   </div>
-                  <div className="vehicleImages bg-[#fcfcfc] p-[20px] rounded-[12px]">
-                    <div className="body flex flex-col gap-[16px]">
-                      <div className="header">
-                        <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
+                  <div className="uploadSection flex gap-[16px]">
+                    {vehicleReportingFiles.map((file, index) => (
+                      <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
+                        <Image
+                          src={closeIcon}
+                          alt=""
+                          width={24}
+                          height={24}
+                          className='absolute top-[-10px] right-[-9px] text-[#131722] '
+                          onClick={() => handleVehicleReportDeleteFile(index)} />
+                        <img key={file.name} src={file.preview} alt={file.name} />
                       </div>
-                      <div className="uploadSection flex gap-[16px]">
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-
-                          <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
-                          <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
-                        </div>
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                          <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleReportFileChange} />
-                          <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
-                          <p className='text-[#1A1A1A] text-[10px]'>Gallery</p>
-                        </div>
-                      </div>
-                      <div className="uploadSection flex gap-[16px]">
-
-
-                        {vehcileReportingFiles.map((file, index) => (
-                          <div key={index} className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
-                            {/* <img src={closeIcon} /> */}
-                            <Image
-                              src={closeIcon}
-                              alt=""
-                              width={24}
-                              height={24}
-                              className='absolute top-[-10px] right-[-9px] text-[#131722] '
-                              onClick={() => handleVehicleReportDeleteFile(index)} />
-                            <img key={file.name} src={file.preview} alt={file.name} />
-                          </div>
-                        ))}
-
-                      </div>
-                    </div>
+                    ))}
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+            <div className="buttons flex items-center justify-between w-full ">
+              <div className="left">
+                <div onClick={handleNewVehicle} className="button">
+                  <button className='text-white'>NEW VEHICLE</button>
+                </div>
+              </div>
+              <div className="right flex items-center justify-end w-full">
+                <div onClick={handleSave} className="button">
+                  <button className='text-white'>SAVE</button>
+                </div>
+                <div onClick={handleNext} className="button">
+                  <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+{isUploadPopupOpen && currentUploadIndex !== null && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg shadow-lg w-[600px] relative">
+      <div className="absolute top-2 right-2 cursor-pointer" onClick={() => setIsUploadPopupOpen(false)}>
+        <CloseIcon />
+      </div>
+      <h2 className="text-xl font-bold mb-4">Vehicle Images/Details</h2>
+      <div className="grid grid-cols-3 gap-4 mb-4">
+      {(() => {
+        const checklists = [checklists0,checklists1, checklists2, checklists3, checklists4];
+        const currentChecklist = checklists[currentChecklistIndex];
+        
+      const currentItem = (currentChecklist && currentChecklist.length > currentUploadIndex)
+      ? currentChecklist[currentUploadIndex]
+      : undefined;
+
+      if (!currentItem) {
+        console.error("Invalid item for upload index:", currentUploadIndex, "in checklist:", currentChecklist);
+      }
+  
+          
+          if (currentChecklistIndex === 0) {
+            if (currentChecklistIndex === 0 && currentUploadIndex === 0) {
+              const imageParts = ['Floor Body', 'Floor', 'Right', 'Left', 'Rear'];
+              return imageParts.map(part => (
+                <ImageUploadSlot
+                  key={part}
+                  image={(currentItem as any).images?.[part] || ''}
+                  onCapture={() => handleImageCapture(0, currentUploadIndex, part)}
+                  onRemove={() => handleRemoveImage(0, currentUploadIndex, part)}
+                  label={part}
+                  checklistIndex={0}
+                  index={currentUploadIndex}
+                  part={part}
+                />
+              ));
+            } else if (currentChecklistIndex === 0 && currentUploadIndex === 3 || currentUploadIndex === 4 || currentUploadIndex === 5) {
+              return (
+                <>
+                  <div className="col-span-1">
+                    <ImageUploadSlot
+                      image={(currentItem as any).image || ''}
+                      onCapture={() => handleImageCapture(0, currentUploadIndex)}
+                      onRemove={() => handleRemoveImage(0, currentUploadIndex)}
+                      label="Photo"
+                      checklistIndex={0}
+                      index={currentUploadIndex}
+                    />
                   </div>
-                  
+                  <div className="col-span-2">
+                    {currentChecklistIndex === 0 && currentUploadIndex === 3 || currentUploadIndex === 4 ? (
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                      <DatePicker
+                        label="Select Date"
+                        value={(currentItem as any).date}
+                        onChange={(newValue: Date | null) => {
+                          const newChecklists = [...checklists0];
+                          (newChecklists[currentUploadIndex] as any).date = newValue;
+                          setChecklists0(newChecklists);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            fullWidth
+                            onKeyDown={(e) => e.preventDefault()} 
+                            InputLabelProps={{ shrink: true }}  
+                            sx={{ 
+                              '& .MuiInputBase-input': { padding: '12px 14px' } 
+                            }}
+                          />
+                        )}
+                        minDate={new Date()}
+                      />
+                    </LocalizationProvider>
+                    ) : (
+                      <TextField
+                        label="Carrying capacity (kg)"
+                        value={(currentItem as any).inputValue || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const newChecklists = [...checklists0];
+                          (newChecklists[currentUploadIndex] as any).inputValue = e.target.value;
+                          setChecklists0(newChecklists);
+                        }}
+                        fullWidth
+                      />
+                    )}
                   </div>
-                  <div className="bottom fixed bottom-4 w-[89%] h-[56px] px-[8px] bg-[#ffffff] flex items-center">
+                </>
+              );
+            }else if (currentChecklistIndex === 0 && currentUploadIndex === 6) {
+              return (
+                <>
+                  <div className="col-span-3">
+                    <Box display="flex" gap={2}>
+                      <TextField
+                        label={currentUploadIndex === 5 ? "Carrying capacity (kg)" : "Driver's license number"}
+                        value={(currentItem as any).inputValue || ''}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          const newChecklists = [...checklists0];
+                          (newChecklists[currentUploadIndex] as any).inputValue = e.target.value;
+                          setChecklists0(newChecklists);
+                        }}
+                        fullWidth
+                      />
+                      <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <DatePicker
+                          label="Select Date"
+                          value={(currentItem as any).date}
+                          onChange={(newValue: Date | null) => {
+                            const newChecklists = [...checklists0];
+                            (newChecklists[currentUploadIndex] as any).date = newValue;
+                            setChecklists0(newChecklists);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              fullWidth
+                              onKeyDown={(e) => e.preventDefault()} 
+                              InputLabelProps={{ shrink: true }} 
+                              sx={{
+                                '& .MuiInputBase-input': { padding: '12px 14px',height: '31px' } 
+                              }}
+                            />
+                          )}
+                          minDate={new Date()}
+                        />
+                      </LocalizationProvider>
+                    </Box>
+                  </div>
+                </>
+              );
+            }
+            else if ((currentItem as any).images) {
+              return Object.entries((currentItem as any).images).map(([part, image]) => (
+                <ImageUploadSlot
+                  key={part}
+                  image={image as string}
+                  onCapture={() => handleImageCapture(0, currentUploadIndex, part)}
+                  onRemove={() => handleRemoveImage(0, currentUploadIndex, part)}
+                  label={part}
+                  checklistIndex={0}
+                  index={currentUploadIndex}
+                  part={part}
+                />
+              ));
+            } 
+            else {
+              return (
+                <ImageUploadSlot
+                  image={(currentItem as any).image || ''}
+                  onCapture={() => handleImageCapture(0, currentUploadIndex)}
+                  onRemove={() => handleRemoveImage(0, currentUploadIndex)}
+                  label="Photo"
+                  checklistIndex={0}
+                  index={currentUploadIndex}
+                />
+              );
+            }
+          } else if (currentChecklistIndex === 2) {
+          if (currentChecklistIndex === 2 && currentUploadIndex === 0) {
+            const imageParts = ['FloorBody', 'Floor', 'Right', 'Left', 'Rear'];
+            return (
+              <>
+                {imageParts.map(part => (
+                  <ImageUploadSlot
+                    key={part}
+                    image={(currentItem as any).images?.[part] || ''}
+                    onCapture={() => handleImageCapture(2, currentUploadIndex, part)}
+                    onRemove={() => handleRemoveImage(2, currentUploadIndex, part)}
+                    label={part}
+                    checklistIndex={2}
+                    index={currentUploadIndex}
+                    part={part}
+                  />
+                ))}
+              </>
+            );
+          } else if (currentChecklistIndex === 2 && currentUploadIndex === 1) {
+            const imageParts = ['Photo1', 'Photo2'];
+            return (
+              <>
+                {imageParts.map(part => (
+                  <ImageUploadSlot
+                    key={part}
+                    image={(currentItem as any).images?.[part] || ''}
+                    onCapture={() => handleImageCapture(2, currentUploadIndex, part)}
+                    onRemove={() => handleRemoveImage(2, currentUploadIndex, part)}
+                    label={part}
+                    checklistIndex={2}
+                    index={currentUploadIndex}
+                    part={part}
+                  />
+                ))}
+              </>
+            );
+          } else if (currentChecklistIndex === 2 && currentUploadIndex === 2) {
+            return (
+              <TextField
+                label="Weight [kg]"
+                value={(currentItem as any).inputValue || ''}
+                onChange={(e) => { 
+                  const newChecklists = [...checklists2];
+                  (newChecklists[currentUploadIndex] as any).inputValue = e.target.value;
+                      setChecklists2(newChecklists);
+                  }
+
+                }
+                fullWidth
+              />
+            );
+          }
+        } else if (currentChecklistIndex === 3) {
+          if (currentChecklistIndex === 3 && currentUploadIndex === 0) {
+            const imageParts = ['First Layer', 'Second Layer', 'Third Layer', 'Fourth Layer', 'Post Loading'];
+            return (
+              <>
+                {imageParts.map(part => (
+                  <ImageUploadSlot
+                    key={part}
+                    image={(currentItem as any).images?.[part] || ''}
+                    onCapture={() => handleImageCapture(3, currentUploadIndex, part)}
+                    onRemove={() => handleRemoveImage(3, currentUploadIndex, part)}
+                    label={part}
+                    checklistIndex={3}
+                    index={currentUploadIndex}
+                    part={part}
+                  />
+                ))}
+              </>
+            );
+           } 
+          else if (currentChecklistIndex === 3 && currentUploadIndex === 2) {
+            return (
+              <>
+                <div className="col-span-1">
+                  <ImageUploadSlot
+                    image={(currentItem as any).image || ''}
+                    onCapture={() => handleImageCapture(3, currentUploadIndex)}
+                    onRemove={() => handleRemoveImage(3, currentUploadIndex)}
+                    label="Photo"
+                    checklistIndex={3}
+                    index={currentUploadIndex}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <TextField
+                    label="Seal number (Optional)"
+                    value={(currentItem as any).inputValue || ''}
+                    onChange={(e) => 
+                     { 
+                      const newChecklists = [...checklists3];
+                      (newChecklists[currentUploadIndex] as any).inputValue = e.target.value;
+                          setChecklists3(newChecklists);
+                      }
+                    }
+                    fullWidth
+                  />
+                </div>
+              </>
+            );
+          } if (currentChecklistIndex === 3 && currentUploadIndex === 3) {
+            return (
+              <ImageUploadSlot
+                image={(currentItem && currentItem.image) || ''}
+                onCapture={() => handleImageCapture(3, currentUploadIndex)}
+                onRemove={() => handleRemoveImage(3, currentUploadIndex)}
+                label="Optional Photo"
+                checklistIndex={3}
+                index={currentUploadIndex}
+              />
+            );
+          } 
+          else if (currentChecklistIndex === 3 && currentUploadIndex === 4) {
+            const currentItem = checklists3[currentUploadIndex];
+            return (
+              <>
+                {currentItem.subItems && currentItem.subItems.map((subItem, index) => (
+                  <div key={index} className="col-span-3 mb-2">
+                    <YesNoSelection
+                      label={subItem.point}
+                      value={subItem.dropdown || ''}
+                      onChange={(value) => 
+                         handleYesNoChange(currentUploadIndex, value, `subItems.${index}.dropdown`)
+                      }
+                    />
+                    {(subItem.dropdown === 'Yes' || subItem.dropdown === 'yes') && (
+                      <TextField
+                        label={`Input for ${subItem.point}`}
+                        value={subItem.inputValue || ''}
+                        onChange={(e) => 
+                          handleInputChange(currentUploadIndex, e.target.value, `subItems.${index}.inputValue`)}
+                        fullWidth
+                      />
+                    )}
+                  </div>
+                ))}
+              </>
+            );
+          }
+        } 
+        else if (currentChecklistIndex === 4) {
+          if (currentUploadIndex === 0 && currentChecklistIndex === 4) {
+            return (
+              <>
+                <div className="col-span-1">
+                  <ImageUploadSlot
+                    image={(currentItem && currentItem.image) || ''}
+                    onCapture={() => handleImageCapture(4, currentUploadIndex)}
+                    onRemove={() => handleRemoveImage(4, currentUploadIndex)}
+                    label="Photo"
+                    checklistIndex={4}
+                    index={currentUploadIndex}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <TextField
+                    label="Optional Input"
+                    value={(currentItem && currentItem.inputValue) || ''}
+                    onChange={(e) => 
+                      {
+                      const newChecklists = [...checklists4];
+                      (newChecklists[currentUploadIndex] as any).inputValue = e.target.value;
+                          setChecklists4(newChecklists);
+                      }
+                    }
                     
-                    <div className="buttons flex items-center justify-between w-full ">
-                     <div className="left">
-                      <div onClick={handleNewVehicle} className="button">
-                      <button className='text-white'>NEW VEHICLE</button>
-                    </div>
-                      </div>
-                      <div className="right flex items-center justify-end w-full">
-                    <div onClick={handleSave} className="button">
-                      <button className='text-white'>SAVE</button>
-                    </div>
-                    <div onClick={handleNext} className="button">
-                      <button className='text-white'>{activeStep === steps.length - 1 ? 'FINISH' : 'NEXT'}</button>
-                    </div>
-                      </div>
-                  </div>
-                  </div>
-                </>}
+                    fullWidth
+                  />
+                </div>
+              </>
+            );
+          }else if (currentChecklistIndex === 4 && currentUploadIndex === 1) {
+            return (
+              <TextField
+                label="Input"
+                value={(currentItem as any).inputValue || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value.length <= 55) {
+                    const formattedValue = value.replace(/(.{10})/g, '$1,').replace(/,$/, '');
+                    handleInputChange(4, currentUploadIndex, formattedValue);
+                  }
+                }}
+                fullWidth
+              />
+            );
+          } else if (currentChecklistIndex === 4 && currentUploadIndex === 2) {
+            return (
+              <YesNoSelection
+                value={(currentItem as any).yesNo}
+                onChange={(value) => handleYesNoChange(4, currentUploadIndex, value)}
+              />
+            );
+          }
+        }
+        else {
+          return (
+            <div>
+              <p>Unhandled case:</p>
+              <p>Checklist Index: {currentChecklistIndex}</p>
+              <p>Upload Index: {currentUploadIndex}</p>
+            </div>
+          );
+        }
+        })()}
+      </div>
+      <button 
+    className="w-full bg-blue-500 text-white py-2 rounded"
+      onClick={() => {
+        let currentItem:any ;
+        let errors = [];
+        let isNewUpload = false;
+        let isNewInput = false;
+        let isNewDate = false;
+        let isAlreadySubmitted = false;
+        let isSuccessfulSave = false;
+        
+
+        if (currentChecklistIndex === 0) {
+          currentItem = checklists0[currentUploadIndex];
+          isAlreadySubmitted = currentItem.submitted;
+
+          if (currentChecklistIndex === 0 && currentUploadIndex === 3 || currentUploadIndex === 4) {
+            if (!currentItem.date) {
+              errors.push("Please select a date.");
+            } else {
+              isNewDate = currentItem.date !== currentItem.previousDate;
+            }
+
+            if (!currentItem.image) {
+              errors.push("Please upload the required image.");
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
+            }
+          } 
+          else if (currentChecklistIndex === 0 && currentUploadIndex === 0) {
+            const requiredImageParts = ['Floor Body', 'Floor', 'Right', 'Left', 'Rear'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
+            
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
+            }
+          } else if (currentChecklistIndex === 0 && currentUploadIndex >= 1 && currentUploadIndex <= 4) {
+            if (!currentItem.image) {
+              errors.push("Please upload the required image.");
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
+            }
+          }
+          else if (currentChecklistIndex === 0 && currentUploadIndex === 5) {
+            if (!currentItem.image) {
+              errors.push("Please upload the required image.");
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
+            }
+          
+            if (!currentItem.inputValue) {
+              errors.push("Please enter the required value.");
+            } else if (!isSuccessfulSave && (currentItem.inputValue.length < 3 || currentItem.inputValue.length > 5)) {
+              errors.push("Input length must be between 3 and 5 characters.");
+            } else {
+              isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
+            }
+          }
+        
+          else if (currentChecklistIndex === 0 && currentUploadIndex === 6) {
+            if (currentItem.inputValue !== undefined) {
+              if (!currentItem.inputValue) {
+                errors.push("Please enter the required value.");
+              } else if (!isSuccessfulSave && currentItem.inputValue.length < 3) {
+                errors.push("Input must be at least 3 characters long.");
+              } else {
+                isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
+              }
+            }
+            if (currentItem.date !== undefined && currentUploadIndex !== 3 && currentUploadIndex !== 4) {
+              if (!currentItem.date) {
+                errors.push("Please select a date.");
+              } else {
+                isNewDate = currentItem.date !== currentItem.previousDate;
+              }
+            }
+          }
+        
+        else if ( currentChecklistIndex === 0 && currentUploadIndex === 7 ) {
+          if (currentItem.dropdown === "No") {
+            isSuccessfulSave = true;
+            setIsUploadPopupOpen(false);
+          } else if (currentItem.dropdown === "Yes" && currentItem.image) {
+            isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
+            if (isNewUpload) {
+              isSuccessfulSave = true;
+              setIsUploadPopupOpen(false);
+            }
+          } else {
+            errors.push("Please select 'No' or upload an image if 'Yes' is selected.");
+          }
+          }
+        }
+        else if (currentChecklistIndex === 2) {
+          currentItem = checklists2[currentUploadIndex];
+          isAlreadySubmitted = currentItem.submitted;
+
+          if (currentChecklistIndex === 2 && currentUploadIndex === 0) {
+            const requiredImageParts = ['FloorBody', 'Floor', 'Right', 'Left', 'Rear'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
+            
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
+            }
+          } else if (currentChecklistIndex === 2 && currentUploadIndex === 1) {
+            const requiredImageParts = ['Photo1', 'Photo2'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
+            
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
+            }
+          } else if (currentChecklistIndex === 2 && currentUploadIndex === 2) {
+            if (!currentItem.inputValue) {
+              errors.push("Please enter the required value.");
+            } else {
+              isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
+            }
+          }
+        } 
+        else if (currentChecklistIndex === 3) {
+          currentItem = checklists3[currentUploadIndex];
+          isAlreadySubmitted = currentItem.submitted;
+
+          if (currentChecklistIndex === 3 && currentUploadIndex === 0) {
+            const requiredImageParts = ['First Layer', 'Second Layer', 'Third Layer', 'Fourth Layer', 'Post Loading'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
+            
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
+            }
+          } else if (currentChecklistIndex === 3 && currentUploadIndex === 2) {
+            if (!currentItem.image) {
+              errors.push("Please upload the required image.");
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
+            }
+            isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
+          }
+          else if (currentChecklistIndex === 3 && currentUploadIndex === 3) {
+            isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
+          }
+          else if (currentChecklistIndex === 3 && currentUploadIndex === 4) {
+            let isChanged = false;
+            let hasErrors = false;
+          
+            
+            for (let i = 0; i < 4; i++) {
+              const subItem = currentItem.subItems[i];
+              const yesNoValue = subItem[`dropdown${i+1}`];
+              const inputValue = subItem[`inputValue${i+1}`];
+              const previousYesNoValue = currentItem[`previousYesNo${i+1}`];
+              const previousInputValue = currentItem[`previousInput${i+1}`];
+
+              if ((i === 0 || i === 3) && yesNoValue === null) {
+                errors.push(`Please select Yes or No for subpoint ${i+1}.`);
+                hasErrors = true;
+              }
+
+              if ((i === 0 || i === 3) && yesNoValue === 'Yes' && !inputValue) {
+                errors.push(`Please provide input for subpoint ${i+1}.`);
+                hasErrors = true;
+              }
+
+              if ((i === 1 || i === 2) && yesNoValue === 'Yes' && !inputValue) {
+                errors.push(`Please provide input for subpoint ${i+1}.`);
+                hasErrors = true;
+              }
+
+              if (yesNoValue !== previousYesNoValue || inputValue !== previousInputValue) {
+                isChanged = true;
+              }
+            }
+          
+            if (hasErrors) {
+              errors.forEach(error => toast.error(error));
+              return;
+            }
+          
+            isNewInput = isChanged;
+          
+            if (isChanged) {
+              for (let i = 1; i <= 4; i++) {
+                currentItem[`previousYesNo${i}`] = currentItem[`yesNo${i}`];
+                currentItem[`previousInput${i}`] = currentItem[`input${i}`];
+              }
+            }
+          }
+        } else if (currentChecklistIndex === 4) {
+          currentItem = checklists4[currentUploadIndex];
+          isAlreadySubmitted = currentItem.submitted;
+
+          if (currentChecklistIndex === 4 && currentUploadIndex === 0) {
+            if (!currentItem.image) {
+              errors.push("Please upload the required image.");
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
+            }
+            isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
+          } else if (currentChecklistIndex === 4 && currentUploadIndex === 1) {
+            if (!currentItem.inputValue) {
+              errors.push("Please enter the required value.");
+            } else {
+              isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
+            }
+          }
+        }
+
+        if (errors.length > 0) {
+          errors.forEach(error => toast.error(error));
+          return;
+        }
+
+        let toastMessage = '';
+
+        if (!isAlreadySubmitted) {
+          if (isNewUpload || isNewInput || isNewDate) {
+            toastMessage = 'Changes saved successfully';
+           
+            saveImagesToServer(currentChecklistIndex,currentUploadIndex);
+            if (currentItem.inputValue !== undefined) {
+              currentItem.previousInputValue = currentItem.inputValue;
+            }
+            if (currentItem.date !== undefined) {
+              currentItem.previousDate = currentItem.date;
+            }
+            
+            currentItem.submitted = true; 
+            setIsUploadPopupOpen(false);
+            toast.success(toastMessage);
+            isSuccessfulSave = true;
+          } else {
+            toastMessage = 'No changes to save';
+            toast.info(toastMessage);
+          }
+        } else {
+          toastMessage = 'Already submitted';
+          toast.info(toastMessage);
+        }
+      
+      }}
+>
+  SUBMIT
+</button>
+    </div>
+  </div>
+)}
+{showCamera && (
+  <div className="camera-overlay">
+    <button onClick={() => {
+      const capturedImageURL = "path/to/captured/image.jpg";
+      
+      const updateChecklist = (prevChecklists: any) => {
+        const newChecklists = [...prevChecklists];
+        const currentItem = newChecklists[currentChecklistIndex];
+        
+        if (currentItem) {
+          if (currentImagePart && currentItem.images) {
+            currentItem.images[currentImagePart] = capturedImageURL;
+          } else if (currentItem.image !== undefined) {
+            currentItem.image = capturedImageURL;
+          }
+        }
+        
+        return newChecklists;
+      };
+
+      switch (currentChecklistIndex) {
+        case 0:
+          setChecklists0(updateChecklist);
+          break;
+        case 1:
+          setChecklists1(updateChecklist);
+          break;
+        case 2:
+          setChecklists2(updateChecklist);
+          break;
+        case 3:
+          setChecklists3(updateChecklist);
+          break;
+        case 4:
+          setChecklists4(updateChecklist);
+          break;
+        default:
+          console.error('Invalid checklist index');
+      }
+      
+      setShowCamera(false);
+      // toast.success('Image uploaded successfully');
+    }}>
+      Capture Image
+    </button>
+  </div>
+)}
+
               {activeStep == 1 &&
                    <>
                   <div className="top md:flex md:flex-row-reverse gap-[24px]">
@@ -1388,24 +2752,28 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                             <FormControlLabel
                               control={
                                 <Checkbox
-                                  checked={item.isAutomatic}
-                                  onChange={(event) => handleCheckboxChange(1, index, event.target.checked)}
-                                />
+                                checked={item.checked || false}
+                                onChange={(event) => {
+                                  const setChecklist = [setChecklists0, setChecklists1, setChecklists2, setChecklists3, setChecklists4][1];
+                                  setChecklist((prev: any) => prev.map((checkItem: any, i: number) =>
+                                    i === index ? { ...checkItem, checked: event.target.checked, timestamp: new Date() } : checkItem
+                                  ));
+                                }}
+                              />
                               }
                               label={<span className="text-[12px]">Automatic Date & Time</span>}
                             />
                           </Grid>
-                          <div className="value">
-                          <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
-                              // label="For mobile"
-                              value={gateInDate}
-                              onChange={(newValue) => {
-                                setGateInDate(newValue);
-                              } }
-                              renderInput={(params) => <TextField {...params} />} />
-                          </LocalizationProvider>
-                        </div>
+                          <Grid item xs={12} className="value">
+                            <LocalizationProvider dateAdapter={AdapterDateFns}>
+                              <MobileDateTimePicker
+                                className='w-[250px] h-[48px] mt-[4px] ml-[27px]'
+                                value={gateInDate}
+                                onChange={(newValue) => setGateInDate(newValue)}
+                                renderInput={(params) => <TextField {...params} />}
+                              />
+                            </LocalizationProvider>
+                          </Grid>
                         </Grid>
                       ))}
                       </div>
@@ -1426,7 +2794,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           Vehicle gate in date & time
                         </div>
                         <div className="value">
-                          <LocalizationProvider dateAdapter={AdapterDayjs}>
+                          <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
                               // label="For mobile"
                               value={gateInDate}
@@ -1445,11 +2813,11 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         <p className='text-[#131722] text-[18px] font-bold'>Vehicle and other images</p>
                       </div>
                       <div className="uploadSection flex gap-[32px]">
-                        <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
+                        {/* <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer">
 
                           <CameraAltOutlinedIcon className='text-[#1A1A1A]' />
                           <p className='text-[#1A1A1A] text-[10px]'>Camera</p>
-                        </div>
+                        </div> */}
                         <div className="item h-[64px] w-[64px] bg-[#F0F3F9] rounded-[6px] flex items-center justify-center flex-col cursor-pointer relative">
                           <input type="file" multiple className='opacity-0 absolute w-full h-full z-2' onChange={handleVehicleGateInFileChange} />
                           <CollectionsOutlinedIcon className='text-[#1A1A1A]' />
@@ -1507,169 +2875,109 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
                       </div>
-                      <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
-                      {checklists2.map((item, index) => (
-                 <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
-                 <div className="left-side flex-grow">
-                   <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
-                 </div>
-                  <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
-                    {index <= 4 && (
-                    <select
-                      value={item.dropdown || ''}
-                      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-                        handleDropdownChange(2, index, event.target.value);
-                      }}
-                      disabled={!allImagesUploaded(item) || item.dropdownDisabled}
-                      style={{
-                        minWidth: '200px',
-                        padding: '8px',
-                        border: '1px solid #ccc',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        backgroundColor: !allImagesUploaded(item) || item.dropdownDisabled ? '#a9a9a9' : 'white', 
-                        cursor: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer',
-                        color: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer' 
-                      }}
-                    >
-                      <option value="" disabled>{item.dropdown ? item.dropdown : 'Select'}</option>
-                      {index === 1 ? (
-                        <>
-                          <option value="Covered">Covered</option>
-                          <option value="Not Covered">Not Covered</option>
-                        </>
-                      ) : index === 2 ? (
-                        <>
-                          <option value="Done">Done</option>
-                          <option value="Not Done">Not Done</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="Yes">Yes</option>
-                          <option value="No">No</option>
-                        </>
-                      )}
-                    </select>
-                    )}
-                    {index === 0 && (
-                      <Grid 
-                        container 
-                        spacing={1} 
-                        className="camera-icons"
-                        style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                          justifyContent: 'space-around',
-                          maxWidth: '100%',
-                          marginBottom: '16px',
-                          paddingRight: '20px'
-                        }}
-                      >
-                      {['Floor Body', 'Floor', 'Left', 'Right', 'Rear'].map(part => (
-                          <Grid 
-                            item 
-                            xs={4} 
-                            sm={4} 
-                            key={part}
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              marginBottom: '8px'
-                            }}
-                          >
-                            <IconButton 
-                              onClick={() => handleImageCapture(2, index, part)}
-                              style={{
-                                padding: '4px',
-                                marginBottom: '4px'
-                              }}
-                              disabled={Boolean(item.images && item.images[part])}
-                            >
-                              {item.images && item.images[part] ? (
-                                <img 
-                                  src={item.images[part]} 
-                                  alt={part} 
-                                  style={{
-                                    width: '40px', 
-                                    height: '40px', 
-                                    objectFit: 'cover',
-                                    borderRadius: '4px'
-                                  }} 
-                                />
-                              ) : (
-                                <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
-                              )}
-                            </IconButton>
-                            <Typography 
-                              variant="caption" 
-                              style={{
-                                fontSize: '10px',
-                                textAlign: 'center',
-                                lineHeight: '1.1',
-                                maxWidth: '60px'
-                              }}
-                            >
-                              {part}
-                            </Typography>
-                          </Grid>
-                        ))}
-                      </Grid>
-                    )}
-                    {index === 1 && (
-                    <Grid container spacing={1} className="camera-icons">
-                      {['Photo 1', 'Photo 2'].map(part => (
-                        <Grid item xs={6} key={part}>
-                          <IconButton 
-                            onClick={() => handleImageCapture(2, index, part)}
-                            style={{
-                              padding: '4px',
-                              marginBottom: '4px'
-                            }}
-                            disabled={Boolean(item.images && item.images[part])}
-                          >
-                            {item.images && item.images[part] ? (
-                              <img 
-                                src={item.images[part]} 
-                                alt={part} 
-                                style={{width: '40px', height: '40px', objectFit: 'cover',
-                                  borderRadius: '4px'}} 
+                      <div className="checkListSection h-[450px] overflow-y-scroll">
+                      <table className="w-full">
+                        <thead>
+                          <tr>
+                            <th className="text-left">Check points</th>
+                            <th>Yes</th>
+                            <th>No</th>
+                            <th>Images</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                        {checklists2.map((item, index) => (
+                          <tr key={index} className="border-b border-[#E6E8EC]">
+                            <td className="py-[12px]">
+                              <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
+                            </td>
+                            <td className="text-center">
+                              <input 
+                                type="radio" 
+                                name={`check2-${index}`} 
+                                value="Yes" 
+                                checked={item.dropdown === "Yes"}
+                                onChange={() => {
+                                  const newChecklists = [...checklists2];
+                                  newChecklists[index].dropdown = "Yes";
+                                  setChecklists2(newChecklists);
+                                }}
+                                disabled={
+                                  index === 0
+                                    ? !item.images || Object.values(item.images).every(img => !img)
+                                    : index === 1
+                                      ? !item.images || !item.images.Photo1 || !item.images.Photo2
+                                      : false
+                                }
                               />
-                            ) : (
-                              <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
-                            )}
-                          </IconButton>
-                          <Typography variant="caption">
-                            {part}
-                          </Typography>
-                        </Grid>
-                      ))}
-                    </Grid>
-                    )}
-                    {index === 2 && (
-                      <div style={{ marginTop: '10px', width: '100%' }}>
-                        <input
-                          type="text"
-                          value={item.inputValue}
-                          onChange={(e) => handleInputChange(2, index, e.target.value, 'inputValue')}
-                          placeholder="Entry of Weight in Pick up Slip"
-                          required
-                          style={{
-                            width: '200px',
-                            height: '35px',
-                            paddingLeft: '10px',
-                            fontSize: '12px',
-                            border: '1px solid #ccc',
-                            borderRadius: '4px',
-                            padding: '5px',
-                            boxSizing: 'border-box'
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                            </td>
+                            <td className="text-center">
+                              <input 
+                                type="radio" 
+                                name={`check2-${index}`} 
+                                value="No" 
+                                checked={item.dropdown === "No"}
+                                onChange={() => {
+                                  const newChecklists = [...checklists2];
+                                  newChecklists[index].dropdown = "No";
+                                  setChecklists2(newChecklists);
+
+                                  if (index === 0 && newChecklists[index].dropdown === "No") {
+                                    const photoEvidence = item.images ? Object.values(item.images).filter(Boolean) : [];
+                                    setIsRejectionDialogOpen(true);
+                                    setRejectionReason(`Point 2-1 failed inspection`);
+                                    setRejectedVehicleInfo({
+                                      vehicleNo: vehicleNo, 
+                                      saleOrder: saleOrder, 
+                                      SIN: SIN, 
+                                      transporterName: transporterName,
+                                      photoEvidence: photoEvidence
+                                    });
+                                  }
+                                }}
+                                disabled={
+                                  index === 0
+                                    ? !item.images || Object.values(item.images).every(img => !img)
+                                    : index === 1
+                                      ? !item.images || !item.images.Photo1 || !item.images.Photo2
+                                      : false
+                                }
+                              />
+                            </td>
+                            <td className="text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button 
+                                  style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
+                                  className="upload-button text-white px-2 py-1 rounded"
+                                  onClick={() => {
+                                    setIsUploadPopupOpen(true);
+                                    setCurrentUploadIndex(index);
+                                    setCurrentChecklistIndex(2);
+                                  }}
+                                >
+                                  <UploadIcon style={{width: "12px", height: "12px", marginRight: "4px", marginBottom: "3px"}} />
+                                  Upload
+                                </button>
+                                {((item.images && Object.values(item.images).filter(Boolean).length > 0) || item.image) && (
+                                  <div className="relative">
+                                    <img 
+                                      src={item.images ? Object.values(item.images).find(Boolean) : item.image} 
+                                      alt="Thumbnail" 
+                                      className="w-8 h-8 object-cover rounded"
+                                    />
+                                    {item.images && Object.values(item.images).filter(Boolean).length > 1 && (
+                                      <span className="absolute bottom-0 right-0 bg-gray-800 text-white text-xs px-1 rounded-full">
+                                        +{Object.values(item.images).filter(Boolean).length - 1}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        </tbody>
+                      </table>
                       </div>
                     </div>
                   </div>
@@ -1686,7 +2994,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           Load in time
                         </div>
                         <div className="value">
-                          <LocalizationProvider dateAdapter={AdapterDayjs}>
+                          <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
                               // label="For mobile"
                               value={loadInDate}
@@ -1768,200 +3076,176 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <div className="header">
                         <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
                       </div>
-                      <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
-                      {checklists3.map((item, index) => (
-                        <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
-                        <div className="left-side flex-grow">
-                          <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
-                        </div>
-                        <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
-                            {index !== 3 && index !== 4 && (
-                              <select
-                                value={item.dropdown || ''}
-                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-                                  handleDropdownChange(3, index, event.target.value);
-                                }}
-                                disabled={item.dropdownDisabled}
-                                style={{
-                                  minWidth: '200px',
-                                  padding: '8px',
-                                  border: '1px solid #ccc',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  backgroundColor: item.dropdownDisabled ? '#a9a9a9' : 'white',
-                                  color: item.dropdownDisabled ? '#555' : 'black',
-                                  cursor: item.dropdownDisabled ? 'not-allowed' : 'pointer'
-                                }}
-                              >
-                                <option value="" disabled>{item.dropdown ? item.dropdown : 'Select'}</option>
-                                {index === 0 || index === 1 ? (
-                                  <>
-                                    <option value="Yes">Yes</option>
-                                    <option value="No">No</option>
-                                  </>
-                                ) : index === 2 ? (
-                                  <>
-                                    <option value="Done">Done</option>
-                                    <option value="Not Done">Not Done</option>
-                                  </>
-                                ) : (
-                                  <>
-                                    <option value="Provided">Provided</option>
-                                    <option value="Not Provided">Not Provided</option>
-                                  </>
-                                )}
-                              </select>
-                            )}
-                            {index === 0 && (
-                              <Grid 
-                                container 
-                                spacing={1} 
-                                className="camera-icons" 
-                                style={{
-                                  display: 'flex', 
-                                  flexWrap: 'wrap',
-                                  justifyContent: 'space-around', 
-                                  maxWidth: "100%", 
-                                  marginBottom: '16px'
-                                }}
-                                
-                              >
-                                {['First Layer', 'Second Layer', 'Third Layer', 'Fourth Layer', 'Post Loading'].map(part => (
-                                  <Grid 
-                                    item 
-                                    xs={4} 
-                                    sm={4} 
-                                    key={part} 
-                                    style={{
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      marginBottom: '8px',
-                                    }}
-                                    
-                                  >                                 
-                                  <IconButton 
-                                    onClick={() => handleImageCapture(3, index, part)}
-                                    style={{
-                                      padding: '4px',
-                                      marginBottom: '4px'
-                                    }}
-                                    disabled={Boolean(item.images && item.images[part])}
+                      <div className="checkListSection h-[450px] overflow-y-scroll">
+                      <table className="w-full">
+                        <thead>
+                          <tr>
+                            <th className="text-left">Check points</th>
+                            <th>Yes</th>
+                            <th>No</th>
+                            <th>Images</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                        {checklists3.map((item, index) => (
+                          <tr key={index} className="border-b border-[#E6E8EC]">
+                            <td className="py-[12px]">
+                              <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
+                            </td>
+                            {index === 4 ? (
+                            <td colSpan={3}>
+                            <div className="flex flex-col space-y-4 border-t border-[#E6E8EC] pt-4 mt-2">
+                              {item.subItems?.map((point:any, num) => (
+                                <div key={num} className="flex flex-col space-y-2">
+                                  <Typography 
+                                    className="text-[#71747A] text-sm flex-grow mr-4" 
+                                    style={{fontSize: '12px', lineHeight: '1.25rem'}}
+                                    variant="caption"
                                   >
-                                  {item.images && item.images[part] ? (
-                                    <img 
-                                      src={item.images[part]} 
-                                      alt={part} 
-                                      style={{
-                                        width: '40px', 
-                                        height: '40px', 
-                                        objectFit: 'cover',
-                                        borderRadius: '4px'
-                                      }} 
-                                    />
-                                  ) : (
-                                    <CameraAltOutlinedIcon style={{ fontSize: '24px' }} />
-                                  )}
-                                  </IconButton>  
-                                    <Typography 
-                                      variant="caption" 
-                                      style={{
-                                        textAlign: 'center',
-                                        fontSize: '0.7rem',
-                                        lineHeight: '1.1',
-                                        maxWidth: '80px'
-                                      }}
-                                    >
-                                      {part}
-                                    </Typography>
-                                  </Grid>
-                                ))}
-                              </Grid>
-                            )}
-                            {index === 2 && (
-                              <>
-                                <Grid container justifyContent="center">
-                                                  <Grid item>
-                                                    <IconButton 
-                                                      onClick={() => handleImageCapture(3, index)}
-                                                      disabled={Boolean(item.image)}
-                                                    >
-                                                      {item.image ? (
-                                                        <img src={item.image} alt="Captured" style={{width: '40px', height: '40px', borderRadius: "4px"}} />
-                                                      ) : (
-                                                        <CameraAltOutlinedIcon />
-                                                      )}
-                                                    </IconButton>
-                                                    <Typography variant="caption">Camera</Typography>
-                                                  </Grid>
-                                                </Grid>
-                                <div style={{ marginTop: '10px', width: '100%' }}>
-                                  <input
-                                    type="text"
-                                    value={item.inputValue}
-                                    onChange={(e) => handleInputChange(3,index, e.target.value, 'inputValue')}
-                                    placeholder="Seal No. (Optional)"
-                                    style={{
-                                      width: '200px',
-                                      height: '35px',
-                                      fontSize: '12px',
-                                      border: '1px solid #ccc',
-                                      borderRadius: '4px',
-                                      padding: '5px',
-                                      boxSizing: 'border-box',
-                                      marginTop: '-5px'
-                                    }}
+                                    { point.point }
+                                  </Typography>
+                                  <div className="flex flex-col space-y-2" >
+                                    <div className="flex items-center space-x-4">
+                                      <div className="flex items-center space-x-2">
+                                      <input 
+                                    type="radio" 
+                                    name={`check3-${index}-${num}`} 
+                                    value="Yes" 
+                                    onChange={() => {
+                                      if (!checklists3) return; 
+                                      const newChecklists = [...checklists3];
+                                      if(newChecklists.length > 0){
+                                        if(newChecklists[index]?.subItems){
+                                          newChecklists[index].subItems[num].dropdown = "Yes";
+                                        }
+                                        setChecklists3(newChecklists);
+                                      }
+                                  }}
+                                    required={num === 0 || num === 3}
                                   />
+                                    <label>Yes</label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                  <input 
+                                    type="radio" 
+                                    name={`check3-${index}-${num}`} 
+                                    value="No" 
+                                    onChange={() => {
+                                      if (!checklists3) return; 
+                                      const newChecklists = [...checklists3];
+                                      if(newChecklists.length > 0){
+                                        if(newChecklists[index]?.subItems){
+                                          newChecklists[index].subItems[num].dropdown = "No";
+                                        }
+                                        setChecklists3(newChecklists);
+                                      }
+                                  }}
+                                    required={num === 0 || num === 3}
+                                  />
+                                    <label>No</label>
+                                  </div>
+                                        </div>
+                                        {(item.subItems && item.subItems[num] && item.subItems[num].dropdown === "Yes") && (
+                                          <input 
+                                          type="text" 
+                                          value={item.subItems[num].inputValue || ''}
+                                          onChange={(e) => {
+                                            const newChecklists = [...checklists3];
+                                            if(newChecklists[index]?.subItems){
+                                              newChecklists[index].subItems[num].inputValue = e.target.value;
+                                            }
+                                            setChecklists3(newChecklists);
+                                          }}
+                                          placeholder="Enter details"
+                                          className="border rounded px-2 py-1 mt-2"
+                                          style={{
+                                            fontSize: '12px',
+                                            width: '200px',
+                                          }}
+                                        />
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
+                              </td>
+                            ): (    <>
+                                <td className="text-center">
+                                  {index < 3 && (
+                                    <input 
+                                      type="radio" 
+                                      name={`check3-${index}`} 
+                                      value="Yes" 
+                                      checked={item.dropdown === "Yes"}
+                                      onChange={() => {
+                                        const newChecklists = [...checklists3];
+                                        newChecklists[index].dropdown = "Yes";
+                                        setChecklists3(newChecklists);
+                                      }}
+                                      disabled={index === 0 ? (!item.images || Object.values(item.images).some(img => !img)) : 
+                                                index === 2 ? !item.image : 
+                                                false}
+                                    />
+                                  )}
+                                </td>
+                                <td className="text-center">
+                                  {index < 3 && (
+                                    <input 
+                                      type="radio" 
+                                      name={`check3-${index}`} 
+                                      value="No" 
+                                      checked={item.dropdown === "No"}
+                                      onChange={() => {
+                                        const newChecklists = [...checklists3];
+                                        newChecklists[index].dropdown = "No";
+                                        setChecklists3(newChecklists);
+                                      }}
+                                      disabled={index === 0 ? (!item.images || Object.values(item.images).some(img => !img)) : 
+                                                index === 2 ? !item.image : 
+                                                false}
+                                    />
+                                  )}
+                                </td>
+                                <td className="text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    {(index === 0 || index === 2 || index === 3) && (
+                                      <button 
+                                        style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
+                                        className="upload-button text-white px-2 py-1 rounded"
+                                        onClick={() => {
+                                          setIsUploadPopupOpen(true);
+                                          setCurrentUploadIndex(index);
+                                          setCurrentChecklistIndex(3);
+                                        }}
+                                      >
+                                        <UploadIcon style={{width: "12px", height: "12px", marginRight: "4px", marginBottom: "3px"}} />
+                                        Upload
+                                      </button>
+                                    )}
+                                    {((item.images && Object.values(item.images).filter(Boolean).length > 0) || item.image) && (
+                                      <div className="relative">
+                                        <img 
+                                          src={item.images ? Object.values(item.images).find(Boolean) : item.image} 
+                                          alt="Thumbnail" 
+                                          className="w-8 h-8 object-cover rounded"
+                                        />
+                                        {item.images && Object.values(item.images).filter(Boolean).length > 1 && (
+                                          <span className="absolute bottom-0 right-0 bg-gray-800 text-white text-xs px-1 rounded-full">
+                                            +{Object.values(item.images).filter(Boolean).length - 1}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
                               </>
-                            )}
-                            {index === 3 && (
-                                <Grid container justifyContent="center">
-                                                  <Grid item>
-                                                    <IconButton 
-                                                      onClick={() => handleImageCapture(3, index)}
-                                                      disabled={Boolean(item.image)}
-                                                    >
-                                                      {item.image ? (
-                                                        <img src={item.image} alt="Captured" style={{width: '50px', height: '50px'}} />
-                                                      ) : (
-                                                        <CameraAltOutlinedIcon />
-                                                      )}
-                                                    </IconButton>
-                                                    <Typography variant="caption">Weighment Slip Photo(Optional)</Typography>
-                                                  </Grid>
-                                                </Grid>
-                            )}
-                            {index === 4 && item.subItems && (
-                              <Grid container spacing={1}>
-                                {item.subItems.map((subItem, subIndex) => (
-                                  <Grid item xs={12} key={subIndex}>
-                                    <Typography variant="caption">{subItem.name}</Typography>
-                                    <select
-                                      value={subItem.dropdown}
-                                      onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-                                        handleDropdownChange(3, index, event.target.value, subIndex);
-                                      }}
-                                      style={{
-                                        width: '100%',
-                                        padding: '8px',
-                                        border: '1px solid #ccc',
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
-                                        marginTop: '4px'
-                                      }}
-                                    >
-                                      <option value="" disabled>Select</option>
-                                      <option value="Provided">Provided</option>
-                                      <option value="Not Provided">Not Provided</option>
-                                    </select>
-                                  </Grid>
-                                ))}
-                              </Grid>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                            )
+                            }
+                          </tr>
+                        )
+                        )}
+                        </tbody>
+                      </table>
                       </div>
                     </div>
                   </div>
@@ -1978,7 +3262,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           Load out time
                         </div>
                         <div className="value">
-                          <LocalizationProvider dateAdapter={AdapterDayjs}>
+                          <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
                               // label="For mobile"
                               value={loadOutDate}
@@ -2045,10 +3329,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     </div>
                       </div>
                   </div>
-                  </div>
-                  
-                  
-                  
+                  </div>        
                 </>}
               {activeStep == 4 &&
                 <>
@@ -2059,116 +3340,113 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                           <div className="header">
                             <p className='text-[#131722] text-[18px] font-bold'>Checklist</p>
                           </div>
-                          <div className="checkListSection" style={{height: "450px", overflow: "scroll"}}>
+                          <div className="checkListSection h-[450px]">
+                          <table className="w-full">
+                            <thead>
+                              <tr>
+                                <th className="text-left">Check points</th>
+                                <th>Yes</th>
+                                <th>No</th>
+                                <th>Images</th>
+                              </tr>
+                            </thead>
+                            <tbody>
                             {checklists4.map((item, index) => (
-                              <div key={index} className="flex py-[12px] border-b border-[#E6E8EC]">
-                                <div className="left-side flex-grow">
+                              <tr key={index} className="border-b border-[#E6E8EC]">
+                                <td className="py-[12px]">
                                   <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
-                                </div>
-                                <div className="right-side flex flex-col items-end gap-[8px] w-[200px]">
-                                  {index <= 2 && (
-                                    <div className="custom-select" style={{
-                                      marginBottom: '10px'
-                                    }}>
-                                      <select
-                                        value={item.dropdown || ''}
-                                        onChange={(event: React.ChangeEvent<HTMLSelectElement>) => {
-                                          handleDropdownChange(4, index, event.target.value);
-                                        }}
-                                        disabled={!allImagesUploaded(item) || item.dropdownDisabled}
-                                        style={{ 
-                                          minWidth: '200px',
-                                          padding: '8px',
-                                          border: '1px solid #ccc',
-                                          borderRadius: '4px',
-                                          fontSize: '12px',
-                                          backgroundColor: !allImagesUploaded(item) || item.dropdownDisabled ? '#a9a9a9' : 'white', 
-                                          color: !allImagesUploaded(item) || item.dropdownDisabled ? '#555' : 'black', 
-                                          cursor: !allImagesUploaded(item) || item.dropdownDisabled ? 'not-allowed' : 'pointer'
+                                </td>
+                                <td className="text-center">
+                                  {(index === 0 || index === 2) && (
+                                    <input 
+                                      type="radio"
+                                      name={`check4-${index}`}
+                                      value="Yes"
+                                      checked={item.dropdown === "Yes"}
+                                      onChange={() => {
+                                        const newChecklists = [...checklists4];
+                                        newChecklists[index].dropdown = "Yes";
+                                        setChecklists4(newChecklists);
+                                      }}
+                                      disabled={index === 0 ? !item.image : false}
+                                    />
+                                  )}
+                                </td>
+                                <td className="text-center">
+                                  {(index === 0 || index === 2) && (
+                                    <input 
+                                      type="radio"
+                                      name={`check4-${index}`}
+                                      value="No"
+                                      checked={item.dropdown === "No"}
+                                      onChange={() => {
+                                        const newChecklists = [...checklists4];
+                                        newChecklists[index].dropdown = "No";
+                                        setChecklists4(newChecklists);
+                                      }}
+                                      disabled={index === 0 ? !item.image : false}
+                                    />
+                                  )}
+                                </td>
+                                <td className="text-center">
+                                  <div className="flex items-center justify-center gap-2">
+                                    {index === 0 && (
+                                      <button 
+                                        style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
+                                        className="upload-button text-white px-2 py-1 rounded"
+                                        onClick={() => {
+                                          setIsUploadPopupOpen(true);
+                                          setCurrentUploadIndex(0);
+                                          setCurrentChecklistIndex(4);
                                         }}
                                       >
-                                        <option value="" >Select</option>
-                                        <option value="Yes">Yes</option>
-                                        <option value="No">No</option>
-                                      </select>
-                                    </div>
-                                  )}
-
-                                  {index === 0 && (
-                                    <Grid container justifyContent="center">
-                                      <Grid item>
-                                        <IconButton 
-                                          onClick={() => handleImageCapture(4, index)}
-                                          disabled={Boolean(item.image)}
-                                        >
-                                          {item.image ? (
-                                            <img src={item.image} alt="Captured" style={{width: '40px', height: '40px',borderRadius: "4px"}} />
-                                          ) : (
-                                            <CameraAltOutlinedIcon />
-                                          )}
-                                        </IconButton>
-                                        <Typography variant="caption">Camera</Typography>
-                                      </Grid>
-                                    </Grid>
-                                  )}
-
-                                  {index === 0  && (
-                                    <div style={{
-                                      marginTop: '10px',
-                                      width: '100%'
-                                    }}>
-                                      <input
-                                        type="text"
-                                        value={item.inputValue}
-                                        onChange={(e) => 
-                                          handleInputChange(4, index, e.target.value, 'inputValue')
+                                        <UploadIcon style={{width: "12px", height: "12px", marginRight: "4px", marginBottom: "3px"}} />
+                                        Upload
+                                      </button>
+                                    )}
+                                    {index === 1 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '10px', marginTop:'10px'}}>
+                                        {item.inputValue && item.inputValue.length > 10 && (
+                                        <div className="relative top-[1px] text-xs text-gray-500 mb-1">
+                                        <p>Invoice count: 
+                                        {Math.floor(item.inputValue.replace(/,/g, '').length / 10)}
+                                        </p>
+                                        </div>
+                                        )}
+                                        <TextField
+                                        value={item.inputValue || ''}
+                                        onChange={(e) => {
+                                        const value = e.target.value.replace(/,/g, '');
+                                        if (value.length <= 55) {
+                                        const formattedValue = value.replace(/(.{10})/g, '$1,').replace(/,$/, '');
+                                        const newChecklists = [...checklists4];
+                                        newChecklists[index].inputValue = formattedValue;
+                                        setChecklists4(newChecklists);
                                         }
-                                        placeholder="Enter Seal No. (If Available)"
-                                        style={{
-                                          width: '200px',
-                                          paddingLeft: '10px',
-                                          height: '35px',
-                                          fontSize: '12px',
-                                          border: '1px solid #ccc',
-                                          padding: '5px',
-                                          boxSizing: 'border-box',
-                                          borderRadius: '4px'
                                         }}
-                                      />
-                                    </div>
-                                  )}
-                                  { index === 1 && (
-                                    <div style={{
-                                      marginTop: '10px',
-                                      width: '100%'
-                                    }}>
-                                      <input
-                                        type="text"
-                                        value={item.inputValue}
-                                        onChange={(e) => 
-                                          handleInputChange(4, index, e.target.value, 'inputValue')
-                                        }
-                                        placeholder="Enter Commercial Invoice Nos"
-                                        required
-                                        style={{
-                                          width: '200px',
-                                          paddingLeft: '10px',
-                                          height: '35px',
-                                          fontSize: '12px',
-                                          border: '1px solid #ccc',
-                                          padding: '5px',
-                                          boxSizing: 'border-box',
-                                          borderRadius: '4px'
+                                        fullWidth
+                                        placeholder='Invoice Numbers'
+                                        inputProps={{
+                                        style: { fontSize: '12px', padding: '8px', width: '100px'} 
                                         }}
-                                      />
-                                      <div style={{ fontSize: '10px', color: '#666', marginTop: '5px' }}>
-                      Enter up to 5 seal numbers.
-                    </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                                        />
+                                        </div>
+                                    )}
+                                    {item.image && (
+                                      <div className="relative">
+                                        <img 
+                                          src={item.image}
+                                          alt="Thumbnail"
+                                          className="w-8 h-8 object-cover rounded"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
                             ))}
+                            </tbody>
+                          </table>
                           </div>
                         </div>
                       </div>
@@ -2182,7 +3460,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                               Vehicle gate out time
                             </div>
                             <div className="value">
-                              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                              <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <MobileDateTimePicker className='w-full h-[48px] mt-[4px]'
                                   value={gateOutDate}
                                   onChange={(newValue) => {
@@ -2236,7 +3514,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         </div>
                       </div>
                       <div className="right flex items-center justify-end w-full">
-                        <div onClick={handleSave} className="button">
+                        <div onClick={handlePageSpecificSave} className="button">
                           <button className='text-white'>SAVE</button>
                         </div>
                         <div onClick={handleNext} className="button">
@@ -2252,7 +3530,17 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                 onClose={handleCloseCamera}
                 onCapture={handleCaptureComplete}
               />
-
+              {/* <Dialog open={isRejectionDialogOpen} onClose={() => setIsRejectionDialogOpen(false)}>
+                <DialogTitle>Vehicle Rejection</DialogTitle>
+                <DialogContent>
+                  <p>{rejectionReason}</p>
+                  <p>Do you want to send a rejection email to the transporter?</p>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setIsRejectionDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleRejection} color="primary">Send Rejection Email</Button>
+                </DialogActions>
+              </Dialog> */}
             </div>
           )}
 
@@ -2264,3 +3552,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
 }
 
 export default SecurityForm
+function setIsSavedPermanently(arg0: boolean) {
+  throw new Error('Function not implemented.');
+}
+
