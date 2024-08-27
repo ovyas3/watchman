@@ -1087,7 +1087,27 @@ function SecurityForm({ searchParams }: props) {
             }
             return false; 
           }
-      
+
+          if (item.point === "7.What is the driver's license number and expiration date of the driver's license?") {
+            if (!item.inputValue) {
+              return true; 
+            }
+            if (!item.date) {
+              return true;
+            }
+            return false; 
+          }
+
+          if (item.point === "1.Is the vehicle body in satisfactory condition for transport?") {
+            if (!item.dropdown) {
+              return true; 
+            }
+            if (!Object.values(item.images).every(img => !!img)) {
+              return true;
+            }
+            return false; 
+          }
+
           const requiresInput = item.inputValue !== undefined && !item.inputValue;
           const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
           const requiresImages = item.images !== undefined && Object.values(item.images || {}).some(img => !img);
