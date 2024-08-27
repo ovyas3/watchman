@@ -391,7 +391,7 @@ function SecurityForm({ searchParams }: props) {
   
     return (
       <div 
-        className="border p-2 text-center cursor-pointer h-[150px] w-[150px] flex items-center justify-center flex-col relative" 
+        className="border p-2 text-center cursor-pointer w-full max-w-[150px] aspect-square flex items-center justify-center flex-col relative" 
         onClick={!image && !isSubmitted ? onCapture : undefined}
         style={{border: "1px solid #DFE3E8", borderRadius: "5px"}}
       >
@@ -945,16 +945,16 @@ function SecurityForm({ searchParams }: props) {
 
   
     if (!allFieldsFilled) {
-      toast.success('Data Saved!', {
-        position: "top-center",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
+      // toast.success('Data Saved!', {
+      //   position: "top-center",
+      //   autoClose: 3000,
+      //   hideProgressBar: false,
+      //   closeOnClick: true,
+      //   pauseOnHover: true,
+      //   draggable: true,
+      //   progress: undefined,
+      //   theme: "light",
+      // });
     }
   
     let images = false;
@@ -2049,7 +2049,11 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
       <div className="absolute top-2 right-2 cursor-pointer" onClick={() => setIsUploadPopupOpen(false)}>
         <CloseIcon />
       </div>
-      <h2 className="text-xl font-bold mb-4">Vehicle Images/Details</h2>
+      {currentChecklistIndex === 0 && currentUploadIndex === 7 ? (
+        <h2 className="text-xl font-bold mb-4">Driver Alcohol Screening</h2>
+      ) : (
+        <h2 className="text-xl font-bold mb-4">Vehicle Images/Details</h2>
+      )}
       <div className="grid grid-cols-3 gap-4 mb-4">
       {(() => {
         const checklists = [checklists0,checklists1, checklists2, checklists3, checklists4];
