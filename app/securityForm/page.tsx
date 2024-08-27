@@ -1111,20 +1111,6 @@ function SecurityForm({ searchParams }: props) {
         if (!reportingDate || !dayjs(reportingDate).isValid()) {
           missingMandatoryFields.push("Vehicle reporting date");
         }
-        if (missingMandatoryFields.length > 0) {
-          const missingFields = missingMandatoryFields.join(', ');
-          toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "light",
-          });
-          return;
-        }
       } else if (currentStage === 2) {
         missingMandatoryFields = currentStageData.filter(item => item.checked === false).map(item => `Checkbox for ${item.point}`);
       }
@@ -1137,20 +1123,6 @@ function SecurityForm({ searchParams }: props) {
 
           return requiresInput || requiresDropdown || requiresImages;
         }).map(item => item.point);
-        if (missingMandatoryFields.length > 0) {
-          const missingFields = missingMandatoryFields.join(', ');
-          toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "light",
-          });
-          return;
-        }
       } 
       else if (currentStage === 4) {
         missingMandatoryFields = currentStageData.flatMap((item, index) => {
@@ -1218,20 +1190,6 @@ function SecurityForm({ searchParams }: props) {
             return item.point;
           }
         });
-        if (missingMandatoryFields.length > 0) {
-          const missingFields = missingMandatoryFields.join(', ');
-          toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-            progress: undefined,
-            theme: "light",
-          });
-          return;
-        }
       } else {
         missingMandatoryFields = currentStageData.filter(item => !validateFields([item], currentStage)).map(item => item.point);
       }
