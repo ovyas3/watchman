@@ -121,8 +121,8 @@ const handleClick = async () => {
                         height={24} />
                 </div>
                                      <div className="left">
-                    <p className='font-bold text-[12px] text-[#71747A] '>{parent}</p>
-                    <p className='font-normal text-[16px] text-[#131722] '>{unit}</p>
+                    <p className='font-bold text-[14px] text-[#71747A] '>{parent}</p>
+                    <p className='font-normal text-[18px] text-[#131722] '>{unit}</p>
                 </div>
                 
                                 </div>
