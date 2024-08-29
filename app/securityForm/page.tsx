@@ -1098,6 +1098,10 @@ function SecurityForm({ searchParams }: props) {
             return false; 
           }
 
+          if(item.point === "4.Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?"){
+            return false;
+          }
+
           if (item.point === "1.Is the vehicle body in satisfactory condition for transport?") {
             if (!item.dropdown) {
               return true; 
@@ -1106,7 +1110,7 @@ function SecurityForm({ searchParams }: props) {
               return true;
             }
             return false; 
-          }
+          }          
 
           const requiresInput = item.inputValue !== undefined && !item.inputValue;
           const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
@@ -1118,7 +1122,6 @@ function SecurityForm({ searchParams }: props) {
             "Point1",
             "Point2",
             "Point3",
-            "Point4",
             "Point5",
             "Point6"
           ];
@@ -1275,10 +1278,6 @@ function SecurityForm({ searchParams }: props) {
               return !!item.dropdown && !!item.image;
             case "Are the tarpaulins in good condition and stitchless as per company standards?":
               return !!item.dropdown && !!item.image;
-            case "Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?":
-              return !!item.dropdown && !!item.image && !!item.date;
-            case "Has the vehicle's Fitness Certificate been confirmed as current and valid?":
-              return !!item.dropdown && !!item.image && !!item.date;
             case "What is the verified carrying capacity of the vehicle in kilograms?":
               return !!item.inputValue && !!item.image;
             case "What is the driver's license number and expiration date of the driver's license?":
