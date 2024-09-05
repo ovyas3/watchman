@@ -589,7 +589,7 @@ function SecurityForm({ searchParams }: props) {
           'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
         };
 
-        const url = 'https://dev-api.instavans.com/api/thor/security/save_stage_images';
+        const url = 'https://live-api.instavans.com/api/thor/security/save_stage_images';
         const response = await fetch(url, {
           method: 'POST',
           body: formData,
@@ -997,7 +997,7 @@ function SecurityForm({ searchParams }: props) {
   
     try {
   
-      const response = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage', {
+      const response = await fetch('https://live-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -1380,7 +1380,7 @@ function SecurityForm({ searchParams }: props) {
 
 const sendRejectionEmail = async (emailContent: string, stage: number) => {
   try {
-    const response = await fetch('https://dev-api.instavans.com/api/thor/security/send-rejection-email', {
+    const response = await fetch('https://live-api.instavans.com/api/thor/security/send-rejection-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1406,7 +1406,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
   
   const handleImageUpload = async (formData: FormData) => {
     try {
-      const imageResponse = await fetch('https://dev-api.instavans.com/api/thor/security/save_stage_images', {
+      const imageResponse = await fetch('https://live-api.instavans.com/api/thor/security/save_stage_images', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1458,7 +1458,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
 
   useEffect(() => {
     const getVehicleData = async () => {
-      const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+      const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
         method: 'GET',
         headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -1596,7 +1596,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
   const router = useRouter();
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://dev-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -3096,7 +3096,9 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                       if (!checklists3) return; 
                                       const newChecklists = [...checklists3];
                                       if(newChecklists.length > 0){
-                                        if(newChecklists[index]?.subItems){
+                                        // @ts-ignore
+                                        if(newChecklists[index] && newChecklists[index].subItems && newChecklists[index].subItems[num]){
+                                          // @ts-ignore
                                           newChecklists[index].subItems[num].dropdown = "Yes";
                                         }
                                         setChecklists3(newChecklists);
@@ -3116,6 +3118,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                       const newChecklists = [...checklists3];
                                       if(newChecklists.length > 0){
                                         if(newChecklists[index]?.subItems){
+                                          // @ts-ignore
                                           newChecklists[index].subItems[num].dropdown = "No";
                                         }
                                         setChecklists3(newChecklists);
@@ -3133,6 +3136,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                           onChange={(e) => {
                                             const newChecklists = [...checklists3];
                                             if(newChecklists[index]?.subItems){
+                                              // @ts-ignore
                                               newChecklists[index].subItems[num].inputValue = e.target.value;
                                             }
                                             setChecklists3(newChecklists);
