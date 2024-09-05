@@ -30,7 +30,7 @@ const handleClick = async () => {
         toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
         // toast.error('Please enter a valid vehicle number', { hideProgressBar: true, autoClose: 2000, type: 'error' });
     } else {
-        const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+        const response = await fetch('https://dev-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
       method: 'GET',
       headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -61,7 +61,7 @@ const handleClick = async () => {
 
      const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    await fetch('https://dev-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -121,8 +121,8 @@ const handleClick = async () => {
                         height={24} />
                 </div>
                                      <div className="left">
-                    <p className='font-bold text-[12px] text-[#71747A] '>{parent}</p>
-                    <p className='font-normal text-[16px] text-[#131722] '>{unit}</p>
+                    <p className='font-bold text-[14px] text-[#71747A] '>{parent}</p>
+                    <p className='font-normal text-[18px] text-[#131722] '>{unit}</p>
                 </div>
                 
                                 </div>

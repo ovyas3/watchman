@@ -28,19 +28,20 @@ function Login() {
     
   }
   return (
-    <div className="flex flex-col justify-end p-[20px] h-screen w-screen bg-[#fcfcfc] gap-[100px] ">
-    <div className='px-[20px]  flex flex-col h-screen gap-[48px] justify-end '>
-        <div className='top'>
+    <div className="flex flex-col items-center justify-between p-[200px] h-screen bg-[#fcfcfc]">
+    <div className='flex flex-col items-center w-full max-w-[530px] gap-[48px]'>
+        <div className='top w-full'>
           <div className="label text-[32px] text-[#1A1A1A] font-bold mt-[32px] ">
             Sign in
           </div>
+          <p>Fill your details correctly</p>
         </div>
-        <div className='center flex flex-col ' >
-          <form className='flex flex-col gap-[16px]'>
+        <div className='center flex flex-col w-full' >
+          <form className='flex flex-col gap-[16px] w-[400px]'>
         <TextField id="outlined-basic" label="Email" variant="outlined" value={username} onChange={e => setUsername(e.target.value)} />
         {/* <TextField id="outlined-basic" label="Password" variant="outlined" value={password} onChange={e => setPassword(e.target.value)} /> */}
         
-        <FormControl sx={{ m: 1, width: '25ch' }} variant="outlined" className='m-[0] w-full'>
+        <FormControl variant="outlined" fullWidth>
           <InputLabel htmlFor="outlined-adornment-password">Password</InputLabel>
           <OutlinedInput
           value={password}
@@ -66,13 +67,13 @@ function Login() {
           </form>
 
         </div>
-        <div className='bottom'>
-        <div className="button" onClick={handleSignIn}>
+        <div className='bottom w-full'>
+        <div className="w-[400px] py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-center" onClick={handleSignIn}>
                 <button  className='buttonLabel'>Sign in</button>
             </div>
         </div>
     </div>
-    <div className="footer w-screen flex items-center justify-center">
+    <div className="footer w-full flex items-center justify-center mt-[150px] mr-[100px]">
       <Image src ={smartruck} 
       width={500}
       alt="Powered by smartruck"
