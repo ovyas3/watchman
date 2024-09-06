@@ -1,9 +1,9 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "NODE_OPTIONS='--max-http-header-size=1280000' next dev",
+    "build": "NODE_OPTIONS='--max-http-header-size=1280000' next build",
+    "start": "NODE_OPTIONS='--max-http-header-size=1280000' next start"
   },
   "dependencies": {
     "@emotion/react": "^11.10.6",
