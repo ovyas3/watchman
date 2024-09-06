@@ -9,6 +9,13 @@ interface CameraCaptureProps {
 const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => {
   const webcamRef = useRef<Webcam>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const FACING_MODE_USER = "user";
+  const FACING_MODE_ENVIRONMENT = "environment";
+  const [facingMode, setFacingMode] = React.useState(FACING_MODE_USER);
+
+  const videoConstraints = {
+    facingMode: FACING_MODE_USER
+  };
 
   const capture = React.useCallback(() => {
     const imageSrc = webcamRef.current?.getScreenshot();
@@ -28,6 +35,16 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
     }
   };
 
+  
+    const handleClick = React.useCallback(() => {
+      setFacingMode(
+        prevState =>
+          prevState === FACING_MODE_USER
+            ? FACING_MODE_ENVIRONMENT
+            : FACING_MODE_USER
+      );
+    }, []);
+
   return (
     <div className="camera-capture w-full">
       {!capturedImage ? (
@@ -38,13 +55,21 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose }) => 
             screenshotFormat="image/jpeg"
             width="100%"
             height="auto"
+            videoConstraints={{
+              ...videoConstraints,
+              facingMode
+            }}
           />
-          <button 
-            className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-            onClick={capture}
-          >
-            Capture photo
-          </button>
+          <div style={{display: "flex", justifyContent: "space-between"}}>
+          <button className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onClick={handleClick}>Switch camera</button>
+         
+         <button 
+           className="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+           onClick={capture}
+         >
+           Capture photo
+         </button>
+          </div>
         </div>
       ) : (
         <div className="captured-image-container">
