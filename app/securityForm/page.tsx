@@ -597,7 +597,6 @@ function SecurityForm({ searchParams }: props) {
         const headers = {
           'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
         };
-
         const url = 'https://prod-api.instavans.com/api/thor/security/save_stage_images';
         const response = await fetch(url, {
           method: 'POST',
