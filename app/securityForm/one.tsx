@@ -188,39 +188,41 @@ function SecurityForm({ searchParams }: props) {
       dropdownDisabled: true,
     },
     {
-      point: '2.Does the vehicle have the required three tarpaulins for cargo protection, and are they in good condition and stitchless according to company standards?',
+      point: '2.Does the vehicle have the required 3 tarpaulins for cargo protection?',
       dropdown: '',
-      images: {
-        'Photo 1': '',
-        'Photo 2': ''
-      },
+      image: ''
     },
     {
-      point: "3.Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?",
+      point: '3.Are the tarpaulins in good condition and stitchless as per company standards?',
       dropdown: '',
-      image: '',
-      dropdownDisabled: true,
-      date:''
+      image: ''
     },
     {
-      point: "4.Has the vehicle's Fitness Certificate been confirmed as current and valid?",
+      point: "4.Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?",
       dropdown: '',
       image: '',
       dropdownDisabled: true,
       date:''
     },
     {
-      point: '5.What is the verified carrying capacity of the vehicle in kilograms?',
+      point: "5.Has the vehicle's Fitness Certificate been confirmed as current and valid?",
+      dropdown: '',
+      image: '',
+      dropdownDisabled: true,
+      date:''
+    },
+    {
+      point: '6.What is the verified carrying capacity of the vehicle in kilograms?',
       inputValue: '',
       image: '',
     },
     {
-      point: "6.What is the driver's license number and expiration date of the driver's license?",
+      point: "7.What is the driver's license number and expiration date of the driver's license?",
       inputValue: '',
       date:'',
     },
     {
-      point: "7.Screening Driver to check wheather the person is under alocohol influence or not ?",
+      point: "8.Screening Driver to check wheather the person is under alocohol influence or not ?",
       image: '',
       dropdown: '',
     }
@@ -337,7 +339,6 @@ function SecurityForm({ searchParams }: props) {
     },
     {
       point: '4.Has a thorough check of the vehicle been completed to identify any materials not listed on the invoice?',
-      image: '',
       dropdown: ''
     }
   ]);
@@ -598,7 +599,7 @@ function SecurityForm({ searchParams }: props) {
           'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
         };
 
-        const url = 'https://live-api.instavans.com/api/thor/security/save_stage_images';
+        const url = 'https://prod-api.instavans.com/api/thor/security/save_stage_images';
         const response = await fetch(url, {
           method: 'POST',
           body: formData,
@@ -713,7 +714,7 @@ function SecurityForm({ searchParams }: props) {
           };
           if (item.dropdown !== undefined) result.dropdown = item.dropdown;
           if (item.inputValue !== undefined) result.inputValue = item.inputValue;
-          if (item.images && Object.values(item.images).every(img => img)) result.images = item.images;
+          if (item.images && Object.values(item.images).some(img => img)) result.images = item.images;
           if (item.image) result.image = item.image;
           if (item.dropdownDisabled !== undefined) result.dropdownDisabled = item.dropdownDisabled;
           if (item.date !== undefined) result.date = item.date;
@@ -737,7 +738,7 @@ function SecurityForm({ searchParams }: props) {
           };
           if (item.dropdown !== undefined) result.dropdown = item.dropdown;
           if (item.inputValue !== undefined) result.inputValue = item.inputValue;
-          if (item.images && Object.values(item.images).every(img => img)) result.images = item.images;
+          if (item.images && Object.values(item.images).some(img => img)) result.images = item.images;
           if (item.dropdownDisabled !== undefined) result.dropdownDisabled = item.dropdownDisabled;
 
 
@@ -871,26 +872,41 @@ function SecurityForm({ searchParams }: props) {
 
   
     let currentStageData = getChecklistForStage(currentStage, currentChecklist);
+  
     currentStageData = currentStageData.map(item => {
       const newItem = { ...item };
       if (imageUrls[item.point]) {
         if (typeof imageUrls[item.point] === 'object') {
-          newItem.images = {};
-          Object.entries(imageUrls[item.point]).forEach(([subName, url]) => {
-            if (typeof url === 'string' && !url.startsWith('data:image')) {
-              newItem.images[subName] = url;
-            }
-          });
-          if (Object.keys(newItem.images).length === 0) {
-            delete newItem.images;
+          const imageKeys = Object.keys(imageUrls[item.point]);
+          if (imageKeys.length === 1) {
+            newItem.image = imageUrls[item.point][imageKeys[0]];
+          } else {
+            newItem.images = imageUrls[item.point];
           }
-        } else if (typeof imageUrls[item.point] === 'string' && !imageUrls[item.point].startsWith('data:image')) {
-          newItem.images = { main: imageUrls[item.point] };
+        } else {
+          newItem.image = imageUrls[item.point];
+        }
+      } else {
+        // console.log(`No imageUrl found for ${item.point}`);
+      }
+    
+      if (newItem.image && typeof newItem.image === 'string' && newItem.image.startsWith('data:image')) {
+        delete newItem.image;
+      }
+      if (newItem.images) {
+        newItem.images = Object.fromEntries(
+          Object.entries(newItem.images).filter(([key, value]) => typeof value === 'string' && !value.startsWith('data:image'))
+        );
+        const imageKeys = Object.keys(newItem.images);
+        if (imageKeys.length === 1) {
+          newItem.image = newItem.images[imageKeys[0]];
+          delete newItem.images;
         }
       }
-  
+    
       return newItem;
     });
+  
     setLocalStageSaves(prev => ({
       ...prev,
       [stageName]: currentStageData
@@ -930,7 +946,7 @@ function SecurityForm({ searchParams }: props) {
   
     const allFieldsFilled = currentStageData.every(item => {
       if (item.image !== undefined && !item.image) return false;
-      if (item.images !== undefined && Object.values(item.images).every(img => !img)) return false;
+      if (item.images !== undefined && Object.values(item.images).some(img => !img)) return false;
       if (item.inputValue !== undefined && !item.inputValue) return false;
       if (item.date !== undefined && !item.date) return false;
       if (item.dropdown !== undefined && !item.dropdown) return false;
@@ -989,7 +1005,7 @@ function SecurityForm({ searchParams }: props) {
   
     try {
   
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/save_stage', {
+      const response = await fetch('https://prod-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -1014,6 +1030,7 @@ function SecurityForm({ searchParams }: props) {
       }
   
       if (response.ok) {
+        console.log('Response from server:', JSON.stringify(data, null, 2));
         toast.success('Data saved!', {
           position: "top-center",
           autoClose: 5000,
@@ -1041,6 +1058,9 @@ function SecurityForm({ searchParams }: props) {
               const imageKey = `${activeStep}-${index}-${part}`;
               newSubmittedImages[imageKey] = true;
             });
+          } else if (item.image) {
+            const imageKey = `${activeStep}-${index}-main`;
+            newSubmittedImages[imageKey] = true;
           }
         });
 
@@ -1083,14 +1103,17 @@ function SecurityForm({ searchParams }: props) {
   
       if (currentStage === 1) {
         missingMandatoryFields = currentStageData.filter(item => {
-          if (item.point === "7.Screening Driver to check wheather the person is under alocohol influence or not ?") {
+          if (item.point === "8.Screening Driver to check wheather the person is under alocohol influence or not ?") {
             if (!item.dropdown) {
               return true; 
             }
-            return false;
+            if (item.dropdown === "Yes" && !item.image) {
+              return true;
+            }
+            return false; 
           }
 
-          if (item.point === "6.What is the driver's license number and expiration date of the driver's license?") {
+          if (item.point === "7.What is the driver's license number and expiration date of the driver's license?") {
             if (!item.inputValue) {
               return true; 
             }
@@ -1100,44 +1123,37 @@ function SecurityForm({ searchParams }: props) {
             return false; 
           }
 
-          if(item.point === "3.Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?"){
+          if(item.point === "4.Has the vehicle's Pollution Under Control (PUC) certificate been verified as valid?"){
             return false;
           }
 
-          if (item.point === "2.Does the vehicle have the required three tarpaulins for cargo protection, and are they in good condition and stitchless according to company standards?") {
-            if (!item.dropdown) {
-              return true;
-            }
-            if (!item.images || Object.values(item.images).length === 0) {
-              return true;
-            }
-            if (!Object.values(item.images).every(img => !!img)) {
-              return true;
-            }
-            return false;
-          }   
-          
           if (item.point === "1.Is the vehicle body in satisfactory condition for transport?") {
             if (!item.dropdown) {
               return true; 
-            }
-            if (!item.images || Object.values(item.images).length === 0) {
-              return true;
             }
             if (!Object.values(item.images).every(img => !!img)) {
               return true;
             }
             return false; 
-          }  
+          }          
 
           const requiresInput = item.inputValue !== undefined && !item.inputValue;
           const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
-          const requiresImages = item.images !== undefined && Object.values(item.images || {}).every(img => !img);
+          const requiresImages = item.images !== undefined && Object.values(item.images || {}).some(img => !img);
           const requiresImage = item.image !== undefined && !item.image;
           const requiresDate = item.date !== undefined && !item.date;
 
-
-          return requiresInput || requiresDropdown || requiresImages || requiresImage || requiresDate;
+          const pointsRequiringImage = [
+            "Point1",
+            "Point2",
+            "Point3",
+            "Point5",
+            "Point6"
+          ];
+    
+          const requiresImageForPoint = pointsRequiringImage.includes(item.point) || !item.image;
+  
+          return requiresInput || requiresDropdown || requiresImages || requiresImage || requiresImageForPoint || requiresDate;
         }).map(item => item.point);
   
         if (!reportingDate || !dayjs(reportingDate).isValid()) {
@@ -1150,7 +1166,7 @@ function SecurityForm({ searchParams }: props) {
         missingMandatoryFields = currentStageData.filter(item => {
           const requiresInput = item.inputValue !== undefined && !item.inputValue;
           const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
-          const requiresImages = item.images !== undefined && Object.values(item.images || {}).every(img => !img);
+          const requiresImages = item.images !== undefined && Object.values(item.images || {}).some(img => !img);
 
 
           return requiresInput || requiresDropdown || requiresImages;
@@ -1161,7 +1177,7 @@ function SecurityForm({ searchParams }: props) {
           const missingFields = [];
       
           if (index === 0) {
-            if (!item.dropdown || !item.images || Object.values(item.images).every(img => !img)) {
+            if (!item.dropdown || !item.images || Object.values(item.images).some(img => !img)) {
               missingFields.push(item.point);
             }
           } else if (index === 1) {
@@ -1201,12 +1217,6 @@ function SecurityForm({ searchParams }: props) {
         });
       } else if (currentStage === 5) {
         missingMandatoryFields = currentStageData.filter((item, index) => {
-          if (item.point === "4.Has a thorough check of the vehicle been completed to identify any materials not listed on the invoice?'") {
-            if (!item.dropdown) {
-              return true; 
-            }
-            return false;
-          }
           const requiresInput = item.inputValue !== undefined && !item.inputValue;
           const requiresDropdown = item.dropdown !== undefined && !item.dropdown;
           const requiresImage = item.image !== undefined && !item.image;
@@ -1237,20 +1247,20 @@ function SecurityForm({ searchParams }: props) {
         missingMandatoryFields = currentStageData.filter(item => !validateFields([item], currentStage)).map(item => item.point);
       }
   
-      if (missingMandatoryFields.length > 0) {
-        const missingFields = missingMandatoryFields.join(', ');
-        toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
-          position: "top-center",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-          theme: "light",
-        });
-        return;
-      }
+      // if (missingMandatoryFields.length > 0) {
+      //   const missingFields = missingMandatoryFields.join(', ');
+      //   toast.error(`Please complete the following mandatory fields: ${missingFields}`, {
+      //     position: "top-center",
+      //     autoClose: 5000,
+      //     hideProgressBar: false,
+      //     closeOnClick: true,
+      //     pauseOnHover: true,
+      //     draggable: true,
+      //     progress: undefined,
+      //     theme: "light",
+      //   });
+      //   return;
+      // }
   
       let hasChanges = false;
   
@@ -1294,14 +1304,22 @@ function SecurityForm({ searchParams }: props) {
           switch (item.point) {
             case "Is the vehicle body in satisfactory condition for transport?":
               return !!item.dropdown && Object.values(item.images).every(img => !!img);
-            case "Does the vehicle have the required three tarpaulins for cargo protection, and are they in good condition and stitchless according to company standards?":
-              return !!item.dropdown && Object.values(item.images).every(img => !!img);
+            case "Does the vehicle have the required 3 tarpaulins for cargo protection?":
+              return !!item.dropdown && !!item.image;
+            case "Are the tarpaulins in good condition and stitchless as per company standards?":
+              return !!item.dropdown && !!item.image;
             case "What is the verified carrying capacity of the vehicle in kilograms?":
               return !!item.inputValue && !!item.image;
             case "What is the driver's license number and expiration date of the driver's license?":
               return !!item.inputValue && !!item.date;
             case "Screening Driver to check wheather the person is under alocohol influence or not ?":
-              return !!item.inputValue
+                if (!item.dropdown) {
+                  return false; 
+                }
+                if (item.dropdown === "Yes" && !item.image) {
+                  return false; 
+                }
+                return true;
       default:
         return true;
           }
@@ -1325,7 +1343,7 @@ function SecurityForm({ searchParams }: props) {
         return stageData.every(item => {
           switch (item.point) {
             case "Has the layer-wise loading and stuffing been executed according to the approved Stacking Plan?":
-              return !!item.dropdown && Object.values(item.images).every(img => !!img);
+              return !!item.dropdown && Object.values(item.images).some(img => !!img);
             case "Does the quantity of loaded material correspond precisely with the quantity listed in the Pick up List?":
               return !!item.dropdown;
             // case "Has the truck been properly sealed, and if so, what is the Seal Number?":
@@ -1394,7 +1412,7 @@ function SecurityForm({ searchParams }: props) {
 
 const sendRejectionEmail = async (emailContent: string, stage: number) => {
   try {
-    const response = await fetch('https://live-api.instavans.com/api/thor/security/send-rejection-email', {
+    const response = await fetch('https://prod-api.instavans.com/api/thor/security/send-rejection-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1420,7 +1438,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
   
   const handleImageUpload = async (formData: FormData) => {
     try {
-      const imageResponse = await fetch('https://live-api.instavans.com/api/thor/security/save_stage_images', {
+      const imageResponse = await fetch('https://prod-api.instavans.com/api/thor/security/save_stage_images', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1472,7 +1490,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
 
   useEffect(() => {
     const getVehicleData = async () => {
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+      const response = await fetch('https://prod-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
         method: 'GET',
         headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -1544,6 +1562,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
           }
         } 
         if (security?.stage4?.completed === true) {
+          const subItems = checklists3[3].subItems;
           const checks = security.stage4.checklist.map((c: any, index: number) => ({
             point: c.point,
             dropdown: c.dropdown,
@@ -1557,45 +1576,16 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
               inputValue: subItem.inputValue
             }))
           }));
-
-          if (Array.isArray(checks[3]?.subItems)) {
-            const invoiceSubItem = checks[3].subItems.find((subItem: { point: string }) => 
-              subItem.point === "1.Has the Invoice Document been provided?"
-            );
-
-            if (invoiceSubItem && d.invoices && d.invoices.length > 0) {
-              const commercialInvoices = d.invoices[0]?.commercial_invoices;
-              if (commercialInvoices && commercialInvoices.length > 0) {
-                invoiceSubItem.dropdown = "Yes";
-                invoiceSubItem.inputValue = commercialInvoices.map((ci: { num: string }) => ci.num).join(', ');
-              }
-            }
+          if (checks.length > 0 && Array.isArray(checks[3].subItems) && checks[3].subItems.length === 0) {
+            checks[3].subItems = subItems;
           }
-
           setChecklists3(checks);
           setActiveStep(3);
           if (security.stage4.images?.length) {
             const newImages = security.stage4.images.map((i: any) => ({ name: i, preview: i }));
             setVehcileLoadOutFiles(newImages);
           }
-        } else if (d.invoices && d.invoices.length > 0) {
-          const updatedChecklists3 = [...checklists3];
-          if (Array.isArray(updatedChecklists3[3]?.subItems)) {
-            const invoiceSubItem = updatedChecklists3[3].subItems.find((subItem: { point: string }) => 
-              subItem.point === "1.Has the Invoice Document been provided?"
-            );
-
-            if (invoiceSubItem) {
-              const commercialInvoices = d.invoices[0]?.commercial_invoices;
-              if (commercialInvoices && commercialInvoices.length > 0) {
-                invoiceSubItem.dropdown = "Yes";
-                invoiceSubItem.inputValue = commercialInvoices.map((ci: { num: string }) => ci.num).join(', ');
-                setChecklists3(updatedChecklists3);
-              }
-            }
-          }
-        }
-
+        } 
         if (security?.stage5?.completed === true) {
           const checks = security.stage5.checklist.map((c: any) => ({
             point: c.point,
@@ -1653,7 +1643,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
   const router = useRouter();
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    await fetch('https://prod-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -1886,7 +1876,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                             <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                           </td>
                           <td className="text-center">
-                            {index < 4 && (
+                            {index < 5 && (
                               <input 
                                 type="radio" 
                                 name={`check-${index}`} 
@@ -1897,16 +1887,16 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                   newChecklists[index].dropdown = "Yes";
                                   setChecklists0(newChecklists);
                                 }}
-                                disabled = {
+                                disabled={
                                   (index === 0) 
-                                  ? !item.images || Object.values(item.images).every(img => !img)
-                                    : (index === 2 || index === 3) 
-                                      ? !item.image
-                                      : false  
+                                  ? !item.images || Object.values(item.images).some(img => !img)
+                                  : (index === 3 || index === 4) 
+                                    ? !item.image
+                                    : false
                                 }
                               />
                             )}
-                            { index == 6 && (
+                            { index == 7 && (
                               <input 
                               type="radio" 
                               name={`check-${index}`} 
@@ -1921,7 +1911,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                             )}
                           </td>
                         <td className="text-center">
-                          {index < 4 && (
+                          {index < 5 && (
                             <input 
                               type="radio" 
                               name={`check-${index}`} 
@@ -1946,14 +1936,14 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                               }}
                               disabled={
                                 (index === 0) 
-                                  ? !item.images || Object.values(item.images).every(img => !img)
-                                    : (index === 2 || index === 3) 
-                                      ? !item.image
-                                      : false
+                                  ? !item.images || Object.values(item.images).some(img => !img)
+                                  : (index === 3 || index === 4) 
+                                    ? !item.image
+                                    : false
                               }
                             />
                           )}
-                          { index == 6 && (
+                          { index == 7 && (
                             <input 
                             type="radio" 
                             name={`check-${index}`} 
@@ -1969,7 +1959,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                         </td>
                           <td className="text-center">
                     <div className="flex items-center justify-center gap-2">
-                    {index === 6 && item.dropdown === "Yes" && (
+                    {index === 7 && item.dropdown === "Yes" && (
                             <div className="flex items-center justify-center gap-2">
                               <button 
                                 style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
@@ -1985,7 +1975,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                               </button>
                             </div>
                           )}
-                      {index!=6 && (
+                      {index!=7 && (
                         <div className="flex items-center justify-center gap-2">
                         <button 
                         style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
@@ -2150,23 +2140,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   part={part}
                 />
               ));
-            } 
-            else if (currentChecklistIndex === 0 && currentUploadIndex === 1) {
-              const imageParts = ['Photo1', 'Photo2'];
-              return imageParts.map(part => (
-                <ImageUploadSlot
-                  key={part}
-                  image={(currentItem as any).images?.[part] || ''}
-                  onCapture={() => handleImageCapture(0, currentUploadIndex, part)}
-                  onRemove={() => handleRemoveImage(0, currentUploadIndex, part)}
-                  label={part}
-                  checklistIndex={0}
-                  index={currentUploadIndex}
-                  part={part}
-                />
-              ));
-            }
-             else if (currentChecklistIndex === 0 && currentUploadIndex === 2 || currentUploadIndex === 3 || currentUploadIndex === 4) {
+            } else if (currentChecklistIndex === 0 && currentUploadIndex === 3 || currentUploadIndex === 4 || currentUploadIndex === 5) {
               return (
                 <>
                   <div className="col-span-1">
@@ -2180,7 +2154,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                     />
                   </div>
                   <div className="col-span-2">
-                    {currentChecklistIndex === 0 && currentUploadIndex === 2 || currentUploadIndex === 3 ? (
+                    {currentChecklistIndex === 0 && currentUploadIndex === 3 || currentUploadIndex === 4 ? (
                       <LocalizationProvider dateAdapter={AdapterDayjs}>
                       <DatePicker
                         label="Select Date"
@@ -2264,7 +2238,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                 </>
               );
-            }else if (currentChecklistIndex === 0 && currentUploadIndex === 5) {
+            }else if (currentChecklistIndex === 0 && currentUploadIndex === 6) {
               return (
                 <>
                   <div className="col-span-3">
@@ -2611,30 +2585,11 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                 onChange={(value) => handleYesNoChange(4, currentUploadIndex, value)}
               />
             );
-          }
-          else if ((currentItem as any).images) {
-            return Object.entries((currentItem as any).images).map(([part, image]) => (
-              <ImageUploadSlot
-                key={part}
-                image={image as string}
-                onCapture={() => handleImageCapture(0, currentUploadIndex, part)}
-                onRemove={() => handleRemoveImage(0, currentUploadIndex, part)}
-                label={part}
-                checklistIndex={0}
-                index={currentUploadIndex}
-                part={part}
-              />
-            ));
-          } 
-          else {
+          } else if (currentChecklistIndex === 4 && currentUploadIndex === 3) {
             return (
-              <ImageUploadSlot
-                image={(currentItem as any).image || ''}
-                onCapture={() => handleImageCapture(0, currentUploadIndex)}
-                onRemove={() => handleRemoveImage(0, currentUploadIndex)}
-                label="Photo"
-                checklistIndex={0}
-                index={currentUploadIndex}
+              <YesNoSelection
+                value={(currentItem as any).yesNo}
+                onChange={(value) => handleYesNoChange(4, currentUploadIndex, value)}
               />
             );
           }
@@ -2666,7 +2621,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
           currentItem = checklists0[currentUploadIndex];
           isAlreadySubmitted = currentItem.submitted;
 
-          if (currentChecklistIndex === 0 && currentUploadIndex === 2 || currentUploadIndex === 3) {
+          if (currentChecklistIndex === 0 && currentUploadIndex === 3 || currentUploadIndex === 4) {
             if (!currentItem.date) {
               errors.push("Please select a date.");
             } else {
@@ -2696,43 +2651,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             }
           } 
           else if (currentChecklistIndex === 0 && currentUploadIndex === 0) {
-            const imageParts = ['Floor Body', 'Floor', 'Right', 'Left', 'Rear'];
-            const uploadedImages = imageParts.filter(part => currentItem.images?.[part]);
+            const requiredImageParts = ['Floor Body', 'Floor', 'Right', 'Left', 'Rear'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
             
-            if (uploadedImages.length == 0) {
-              errors.push("Please upload at least one image.");
-            } 
-            else {
-              if (submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`]) {
-                toast.error("Image already submitted.");
-                return;
-              } else {
-                isNewUpload = true;
-              }
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
             }
-          } else if (currentChecklistIndex === 0 && currentUploadIndex === 1) {
-            const imageParts = ['Photo1', 'Photo2'];
-            const uploadedImages = imageParts.filter(part => currentItem.images?.[part]);
-            
-            if (uploadedImages.length == 0) {
-              errors.push("Please upload at least one image.");
-            } 
-            else {
-              if (submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`]) {
-                toast.error("Image already submitted.");
-                return;
-              } else {
-                isNewUpload = true;
-              }
-            }
-          } else if (currentChecklistIndex === 0 && currentUploadIndex >= 2 && currentUploadIndex <= 3) {
+          } else if (currentChecklistIndex === 0 && currentUploadIndex >= 1 && currentUploadIndex <= 4) {
             if (!currentItem.image) {
               errors.push("Please upload the required image.");
             } else {
               isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
             }
           }
-          else if (currentChecklistIndex === 0 && currentUploadIndex === 4) {
+          else if (currentChecklistIndex === 0 && currentUploadIndex === 5) {
             if (!currentItem.image) {
               errors.push("Please upload the required image.");
             } else {
@@ -2750,7 +2684,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             }
           }
         
-          else if (currentChecklistIndex === 0 && currentUploadIndex === 5) {
+          else if (currentChecklistIndex === 0 && currentUploadIndex === 6) {
             if (currentItem.inputValue !== undefined) {
               if (!currentItem.inputValue) {
                 errors.push("Please enter the required value.");
@@ -2764,7 +2698,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                 isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
               }
             }
-            if (currentItem.date !== undefined && currentUploadIndex !== 2 && currentUploadIndex !== 3) {
+            if (currentItem.date !== undefined && currentUploadIndex !== 3 && currentUploadIndex !== 4) {
               if (!currentItem.date) {
                 errors.push("Please select a date.");
               } else {
@@ -2788,7 +2722,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             }
           }
         
-        else if ( currentChecklistIndex === 0 && currentUploadIndex === 6 ) {
+        else if ( currentChecklistIndex === 0 && currentUploadIndex === 7 ) {
           if (currentItem.dropdown === "No") {
             isSuccessfulSave = true;
             setIsUploadPopupOpen(false);
@@ -2808,34 +2742,22 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
           isAlreadySubmitted = currentItem.submitted;
 
           if (currentChecklistIndex === 2 && currentUploadIndex === 0) {
-            const imageParts = ['FloorBody', 'Floor', 'Right', 'Left', 'Rear'];
-            const uploadedImages = imageParts.filter(part => currentItem.images?.[part]);
+            const requiredImageParts = ['FloorBody', 'Floor', 'Right', 'Left', 'Rear'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
             
-            if (uploadedImages.length == 0) {
-              errors.push("Please upload at least one image.");
-            } 
-            else {
-              if (submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`]) {
-                toast.error("Image already submitted.");
-                return;
-              } else {
-                isNewUpload = true;
-              }
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
             }
           } else if (currentChecklistIndex === 2 && currentUploadIndex === 1) {
-            const imageParts = ['Photo1', 'Photo2'];
-            const uploadedImages = imageParts.filter(part => currentItem.images?.[part]);
+            const requiredImageParts = ['Photo1', 'Photo2'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
             
-            if (uploadedImages.length == 0) {
-              errors.push("Please upload at least one image.");
-            } 
-            else {
-              if (submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`]) {
-                toast.error("Image already submitted.");
-                return;
-              } else {
-                isNewUpload = true;
-              }
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
             }
           } else if (currentChecklistIndex === 2 && currentUploadIndex === 2) {
             if (!currentItem.inputValue) {
@@ -2852,19 +2774,13 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
           isAlreadySubmitted = currentItem.submitted;
 
           if (currentChecklistIndex === 3 && currentUploadIndex === 0) {
-            const imageParts = ['First Layer', 'Second Layer', 'Third Layer', 'Fourth Layer', 'Post Loading'];
-            const uploadedImages = imageParts.filter(part => currentItem.images?.[part]);
+            const requiredImageParts = ['First Layer', 'Second Layer', 'Third Layer', 'Fourth Layer', 'Post Loading'];
+            const missingImages = requiredImageParts.filter(part => !currentItem.images?.[part]);
             
-            if (uploadedImages.length == 0) {
-              errors.push("Please upload at least one image.");
-            }
-            else {
-              if (submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`]) {
-                toast.error("Image already submitted.");
-                return;
-              } else {
-                isNewUpload = true;
-              }
+            if (missingImages.length > 0) {
+              errors.push(`Please upload images for: ${missingImages.join(', ')}`);
+            } else {
+              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentUploadIndex}-main`];
             }
           } 
           // else if (currentChecklistIndex === 3 && currentUploadIndex === 2) {
@@ -2924,7 +2840,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
               }
             }
           }
-        } if (currentChecklistIndex === 4) {
+        } else if (currentChecklistIndex === 4) {
           currentItem = checklists4[currentUploadIndex];
           isAlreadySubmitted = currentItem.submitted;
 
@@ -2951,22 +2867,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             } else {
               isNewInput = currentItem.inputValue !== currentItem.previousInputValue;
             }
-          } 
-          else if ( currentChecklistIndex === 4 && currentUploadIndex === 3) {
-            if (currentItem.dropdown === "No") {
-              isSuccessfulSave = true;
-              setIsUploadPopupOpen(false);
-            } else if (currentItem.dropdown === "Yes" && currentItem.image) {
-              isNewUpload = !submittedImages[`${currentUploadIndex}-${currentImageIndex}-main`];
-              if (isNewUpload) {
-                isSuccessfulSave = true;
-                setIsUploadPopupOpen(false);
-              }
-            } else {
-              errors.push("Please select 'No' or upload an image if 'Yes' is selected.");
-            }
-            }
-          
+          }
         }
 
         if (errors.length > 0) {
@@ -3446,6 +3347,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                       if (!checklists3) return; 
                                       const newChecklists = [...checklists3];
                                       if(newChecklists.length > 0){
+                                        
                                         // @ts-ignore
                                         if(newChecklists[index] && newChecklists[index].subItems && newChecklists[index].subItems[num]){
                                           // @ts-ignore
@@ -3553,7 +3455,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                         newChecklists[index].dropdown = "Yes";
                                         setChecklists3(newChecklists);
                                       }}
-                                      disabled={index === 0 ? (!item.images || Object.values(item.images).every(img => !img)) : 
+                                      disabled={index === 0 ? (!item.images || Object.values(item.images).some(img => !img)) : 
                                                 index === 2 ? !item.image : 
                                                 false}
                                     />
@@ -3571,7 +3473,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                         newChecklists[index].dropdown = "No";
                                         setChecklists3(newChecklists);
                                       }}
-                                      disabled={index === 0 ? (!item.images || Object.values(item.images).every(img => !img)) : 
+                                      disabled={index === 0 ? (!item.images || Object.values(item.images).some(img => !img)) : 
                                                 index === 2 ? !item.image : 
                                                 false}
                                     />
@@ -3728,7 +3630,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                   <Typography className="text-[#71747A]" variant="caption">{item.point}</Typography>
                                 </td>
                                 <td className="text-center">
-                                  {(index === 0 || index === 2 ) && (
+                                  {(index === 0 || index === 2 || index === 3) && (
                                     <input 
                                       type="radio"
                                       name={`check4-${index}`}
@@ -3742,22 +3644,9 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                       disabled={index === 0 ? !item.image : false}
                                     />
                                   )}
-                                  { index == 3 && (
-                                    <input 
-                                    type="radio" 
-                                    name={`check-${index}`} 
-                                    value="Yes" 
-                                    checked={item.dropdown === "Yes"}
-                                    onChange={() => {
-                                      const newChecklists = [...checklists4];
-                                      newChecklists[index].dropdown = "Yes";
-                                      setChecklists4(newChecklists);
-                                    }}
-                                  />
-                                  )}
                                 </td>
                                 <td className="text-center">
-                                  {(index === 0 || index === 2) && (
+                                  {(index === 0 || index === 2 || index === 3) && (
                                     <input 
                                       type="radio"
                                       name={`check4-${index}`}
@@ -3770,19 +3659,6 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                       }}
                                       disabled={index === 0 ? !item.image : false}
                                     />
-                                  )}
-                                  { index == 3 && (
-                                    <input 
-                                    type="radio" 
-                                    name={`check-${index}`} 
-                                    value="No" 
-                                    checked={item.dropdown === "No"}
-                                    onChange={() => {
-                                      const newChecklists = [...checklists4];
-                                      newChecklists[index].dropdown = "No";
-                                      setChecklists4(newChecklists);
-                                    }}
-                                  />
                                   )}
                                 </td>
                                 <td className="text-center">
@@ -3839,22 +3715,6 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                         />
                                       </div>
                                     )}
-                                    {index === 3 && item.dropdown === "Yes" && (
-                            <div className="flex items-center justify-center gap-2">
-                              <button 
-                                style={{backgroundColor: "#E7E9FF", color: "#2962FF", fontSize: "10px", borderRadius: "12px", width: "64px", height: "24px"}}
-                                className="upload-button text-white px-2 py-1 rounded"
-                                onClick={() => {
-                                  setIsUploadPopupOpen(true);
-                                  setCurrentUploadIndex(index);
-                                  setCurrentChecklistIndex(4);
-                                }}
-                              > 
-                                <UploadIcon style={{width: "12px", height: "12px", marginRight: "4px", marginBottom: "3px"}} />
-                                Upload
-                              </button>
-                            </div>
-                          )}
                                     {item.image && (
                                       <div className="relative">
                                         <img 
