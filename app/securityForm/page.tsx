@@ -598,7 +598,7 @@ function SecurityForm({ searchParams }: props) {
           'Authorization': `bearer ${session.user.data.accessToken} Shipper ${session.user.data.default_unit}`,
         };
 
-        const url = 'https://live-api.instavans.com/api/thor/security/save_stage_images';
+        const url = 'https://prod-api.instavans.com/api/thor/security/save_stage_images';
         const response = await fetch(url, {
           method: 'POST',
           body: formData,
@@ -989,7 +989,7 @@ function SecurityForm({ searchParams }: props) {
   
     try {
   
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/save_stage', {
+      const response = await fetch('https://prod-api.instavans.com/api/thor/security/save_stage', {
         method: 'POST',
         body: JSON.stringify(payload),
         headers: {
@@ -1394,7 +1394,7 @@ function SecurityForm({ searchParams }: props) {
 
 const sendRejectionEmail = async (emailContent: string, stage: number) => {
   try {
-    const response = await fetch('https://live-api.instavans.com/api/thor/security/send-rejection-email', {
+    const response = await fetch('https://prod-api.instavans.com/api/thor/security/send-rejection-email', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1420,7 +1420,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
   
   const handleImageUpload = async (formData: FormData) => {
     try {
-      const imageResponse = await fetch('https://live-api.instavans.com/api/thor/security/save_stage_images', {
+      const imageResponse = await fetch('https://prod-api.instavans.com/api/thor/security/save_stage_images', {
         method: 'POST',
         body: formData,
         headers: {
@@ -1472,7 +1472,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
 
   useEffect(() => {
     const getVehicleData = async () => {
-      const response = await fetch('https://live-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
+      const response = await fetch('https://prod-api.instavans.com/api/thor/security/get_vehicle_details?' + new URLSearchParams({vehicle_no: vehicleNo}), {
         method: 'GET',
         headers: {
           'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -1653,7 +1653,7 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
   const router = useRouter();
   const handleLogout = async () => {
     // await put('shipper_user/sign_out', { from: 'web' });
-    await fetch('https://live-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
+    await fetch('https://prod-api.instavans.com/api/thor/shipper_user/sign_out?from=web', {
     method: 'PUT',
     headers: {
         'Authorization': `bearer ${session?.user.data.accessToken} Shipper ${session?.user.data.default_unit}`,
@@ -2617,10 +2617,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
               <ImageUploadSlot
                 key={part}
                 image={image as string}
-                onCapture={() => handleImageCapture(0, currentUploadIndex, part)}
-                onRemove={() => handleRemoveImage(0, currentUploadIndex, part)}
+                onCapture={() => handleImageCapture(4, currentUploadIndex, part)}
+                onRemove={() => handleRemoveImage(4, currentUploadIndex, part)}
                 label={part}
-                checklistIndex={0}
+                checklistIndex={4}
                 index={currentUploadIndex}
                 part={part}
               />
@@ -2630,10 +2630,10 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
             return (
               <ImageUploadSlot
                 image={(currentItem as any).image || ''}
-                onCapture={() => handleImageCapture(0, currentUploadIndex)}
-                onRemove={() => handleRemoveImage(0, currentUploadIndex)}
+                onCapture={() => handleImageCapture(4, currentUploadIndex)}
+                onRemove={() => handleRemoveImage(4, currentUploadIndex)}
                 label="Photo"
-                checklistIndex={0}
+                checklistIndex={4}
                 index={currentUploadIndex}
               />
             );
@@ -3234,7 +3234,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                   index === 0
                                     ? !item.images || Object.values(item.images).every(img => !img)
                                     : index === 1
-                                      ? !item.images || !item.images.Photo1 || !item.images.Photo2
+                                      ? !item.images || Object.values(item.images).every(img => !img)
                                       : false
                                 }
                               />
@@ -3267,7 +3267,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                                   index === 0
                                     ? !item.images || Object.values(item.images).every(img => !img)
                                     : index === 1
-                                      ? !item.images || !item.images.Photo1 || !item.images.Photo2
+                                      ? !item.images || Object.values(item.images).every(img => !img)
                                       : false
                                 }
                               />
