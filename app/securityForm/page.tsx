@@ -811,6 +811,7 @@ function SecurityForm({ searchParams }: props) {
               }
 
               if (index === 3) {
+                if (item.image) result.image = item.image;
                 result.dropdown = item.dropdown;
               }
               
@@ -1023,6 +1024,7 @@ function SecurityForm({ searchParams }: props) {
           progress: undefined,
           theme: "light",
         });
+        const normalizedCurrentData = normalizeData(currentStageData);
   
         if (images) {
           await handleImageUpload(formData);
@@ -1030,7 +1032,7 @@ function SecurityForm({ searchParams }: props) {
   
         setPreviousStageData((prev: any) => ({
           ...prev,
-          [stageName]: JSON.parse(JSON.stringify(currentStageData))
+          [stageName]: normalizedCurrentData
         }));
 
         const newSubmittedImages = { ...submittedImages };
@@ -1038,7 +1040,8 @@ function SecurityForm({ searchParams }: props) {
           if (item.images) {
             Object.keys(item.images).forEach(part => {
               const imageKey = `${activeStep}-${index}-${part}`;
-              newSubmittedImages[imageKey] = true;
+              // console.log(`${activeStep}-${index}-${part}`, item.images);
+              if (item.images[part]) newSubmittedImages[imageKey] = true;
             });
           }
         });
@@ -1068,6 +1071,17 @@ function SecurityForm({ searchParams }: props) {
     } catch (error: unknown) {
       console.error('Error saving data:', error);
     }
+  };
+
+  const normalizeData = (data: any[]) => {
+    return data.map(item => {
+      const normalizedItem = { ...item };
+      if (normalizedItem.image) {
+        normalizedItem.images = { main: normalizedItem.image };
+        delete normalizedItem.image;
+      }
+      return normalizedItem;
+    });
   };
 
   const handleNext = async () => {
@@ -1251,12 +1265,14 @@ function SecurityForm({ searchParams }: props) {
         return;
       }
   
+      const normalizedCurrentData = normalizeData(currentStageData);
+      const normalizedPreviousData = normalizeData(previousStageData[stageName] || []);
       let hasChanges = false;
   
       if (currentStage === 2) {
         hasChanges = hasCheckboxChanges(currentStageData, previousStageData[stageName]);
       } else {
-        hasChanges = JSON.stringify(currentStageData) !== JSON.stringify(previousStageData[stageName] || []);
+        hasChanges = JSON.stringify(normalizedCurrentData) !== JSON.stringify(normalizedPreviousData);
       }
 
       if (hasChanges) {
@@ -1622,7 +1638,10 @@ const sendRejectionEmail = async (emailContent: string, stage: number) => {
             security[stage].checklist.forEach((item: any, index: number) => {
               if (item.images) {
                 Object.keys(item.images).forEach(part => {
-                  newSubmittedImages[`${stageIndex}-${index}-${part}`] = true;
+                  if (item.images[part]) {
+                    newSubmittedImages[`${stageIndex}-${index}-${part}`] = true;
+                    // console.log(`${stageIndex}-${index}-${part}`, item.images);
+                  }
                 });
               } else if (item.image) {
                 newSubmittedImages[`${stageIndex}-${index}-main`] = true;
