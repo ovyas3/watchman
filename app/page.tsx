@@ -44,9 +44,20 @@ const handleClick = async () => {
         }
     }
   };
+  const PATTERN = /^[A-Za-z0-9\s]*$/;
 
   const handleOnChange = (event: any) => {
-    const vehicle = event.target.value;
+    const inputValue = event.target.value;
+
+    if(!PATTERN.test(inputValue)){
+        toast.error('Only letters and numbers are allowed', {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: 'error'
+        });
+        return;
+    }
+    const vehicle = inputValue.toUpperCase();
     setVehicleNo(vehicle);
     if (!vehicle) setValidVehicle(false);
     else setValidVehicle(true);
@@ -129,7 +140,7 @@ const handleClick = async () => {
                                 <div className="containerBottom">
                                     <div className="input w-full h-[56px]">
                         <input className='w-full h-full pl-[16px] border rounded-[6px] border-[#DFE3EB] outline-none' type="text" placeholder='KA 22 EP 9990'
-                            value={vehicleNo} onChange={handleOnChange} />
+                            value={vehicleNo} onChange={handleOnChange} maxLength={15} />
                     </div>
                                 </div>
                                

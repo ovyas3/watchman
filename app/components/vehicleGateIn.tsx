@@ -13,6 +13,7 @@ type props = {
   trackingMethod: string,
   lastLocation: string,
   lastLocationAt: string,
+  SIN: string,
 }
 const Accordion = styled((props: AccordionProps) => (
     <MuiAccordion disableGutters elevation={0} square {...props} />
@@ -20,9 +21,9 @@ const Accordion = styled((props: AccordionProps) => (
     backgroundColor: '#FCFCFC',
     borderRadius: '12px'
   }));
-  
 
-function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation, lastLocationAt }: props) {
+
+function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation, lastLocationAt, SIN }: props) {
     const [showVehicle, setShowVehicle] = useState(true);
     const handleIconClick = () => {
         setShowVehicle(!showVehicle);
@@ -49,13 +50,13 @@ function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation
                         Vehicle Number
                     </div>
                     <div className="value flex gap-[8px] items-center ">
-                        
-                            {vehicleNo}
-                        
-                        
+
+                        {vehicleNo}
+
+
                     </div>
                 </div>
-                
+
                 
                 <div className="detailsSection">
                     <div className="label">
@@ -76,18 +77,26 @@ function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation
             </div>
             <div className="right flex flex-col gap-[16px] w-[50%]">
 
-        <div className="detailsSection">
+                <div className="detailsSection">
                     <div className="label">
                         Tracking Method
                     </div>
                     <div className="value flex gap-[8px] items-center ">
                         
-                            {trackingMethod}
-                        
+                        {trackingMethod}
+
                         
                     </div>
                 </div>
                 
+                <div className="detailsSection">
+                    <div className="label">
+                        SIN Number
+                    </div>
+                    <div className="value">
+                        {SIN}
+                    </div>
+                </div>
                 
                 <div className="detailsSection">
                     <div className="label">

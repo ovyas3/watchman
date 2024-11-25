@@ -822,11 +822,11 @@ function SecurityForm({ searchParams }: props) {
     }
   };
 
-  const formatDate = (date: string | Date | Dayjs | null | undefined): string | undefined => {
+  const formatDate = (date: string | Date | Dayjs | null | undefined): number | undefined => {
     if (!date) return undefined;
     
     const utcDate = dayjs(date).utc(true);
-    return utcDate.isValid() ? utcDate.format() : undefined;
+    return utcDate.isValid() ? utcDate.valueOf() : undefined;
   };
 
 
@@ -2044,7 +2044,14 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
               </div>
             </div>
             <div className="w-full md:w-1/3 flex flex-col gap-[16px]" >
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
+                      <VehicleGateIn 
+                        vehicleNo={vehicleNo} 
+                        driver={shipment.driver?.name} 
+                        mobile={shipment.driver?.mobile} 
+                        trackingMethod={trackingMethod} 
+                        lastLocation={lastLocation} 
+                        lastLocationAt={lastLocationAt}
+                        SIN={shipment.SIN || 'N/A'} />
               <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
                 <div className="body">
                   <div className="detailsSection">
@@ -2290,7 +2297,7 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       <TextField
                         label="Driver's license number"
                         value={(currentItem as any).inputValue || ''}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                        onChange={(e) => {
                           const newValue = e.target.value;
                           let validValue = newValue.replace(/[^a-zA-Z0-9.]/g, '');
                           
@@ -3127,7 +3134,14 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="left flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
+                      <VehicleGateIn 
+                        vehicleNo={vehicleNo} 
+                        driver={shipment.driver?.name} 
+                        mobile={shipment.driver?.mobile} 
+                        trackingMethod={trackingMethod} 
+                        lastLocation={lastLocation} 
+                        lastLocationAt={lastLocationAt}
+                        SIN={shipment.SIN || 'N/A'} />
                       
                   {/* <DriverDetails /> */}
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] rounded-[12px]">
@@ -3329,7 +3343,14 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="w-full md:w-1/3 flex flex-col gap-[16px]" >
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
+                      <VehicleGateIn 
+                        vehicleNo={vehicleNo} 
+                        driver={shipment.driver?.name} 
+                        mobile={shipment.driver?.mobile} 
+                        trackingMethod={trackingMethod} 
+                        lastLocation={lastLocation} 
+                        lastLocationAt={lastLocationAt}
+                        SIN={shipment.SIN || 'N/A'} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px] rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
@@ -3640,7 +3661,14 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                   </div>
                     </div>
                     <div className="w-full md:w-1/3 flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()} />
+                      <VehicleGateIn 
+                        vehicleNo={vehicleNo} 
+                        driver={shipment.driver?.name} 
+                        mobile={shipment.driver?.mobile} 
+                        trackingMethod={trackingMethod} 
+                        lastLocation={lastLocation} 
+                        lastLocationAt={DateTime.fromISO(shipment.trip_tracker?.last_location_at).toFormat('dd-MMM-yyyy hh:mm a').toLocaleString()}
+                        SIN={shipment.SIN || 'N/A'} />
                   <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
                     <div className="body">
                       <div className="header  ">
@@ -3893,7 +3921,14 @@ const handleVehicleGateOutDeleteFile = (index: number) => {
                       </div>
                     </div>
                     <div className="w-full md:w-1/3 flex flex-col gap-[16px]">
-                      <VehicleGateIn vehicleNo={vehicleNo} driver={shipment.driver?.name} mobile={shipment.driver?.mobile} trackingMethod={trackingMethod} lastLocation={lastLocation} lastLocationAt={lastLocationAt} />
+                      <VehicleGateIn 
+                        vehicleNo={vehicleNo} 
+                        driver={shipment.driver?.name} 
+                        mobile={shipment.driver?.mobile} 
+                        trackingMethod={trackingMethod} 
+                        lastLocation={lastLocation} 
+                        lastLocationAt={lastLocationAt}
+                        SIN={shipment.SIN || 'N/A'} />
                       <div className="gateInDetails bg-[#fcfcfc] p-[20px] rounded-[12px]">
                         <div className="body">
                           <div className="detailsSection">
