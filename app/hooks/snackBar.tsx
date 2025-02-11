@@ -45,11 +45,37 @@ const SnackbarComponent: React.FC<SnackbarState> = ({
   type,
 }) => {
   return (
-    <Snackbar className='w-full' autoHideDuration={3000} open={open}>
-    <Alert className='w-[95%]' variant="outlined" severity={type} >
+    <Snackbar 
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      open={open} 
+      autoHideDuration={3000} 
+      className='z-[9999] fixed top-4 right-4'
+      sx={{
+        '& .MuiAlert-root': {
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          minWidth: '300px',
+          fontWeight: 600,
+          padding: '12px 16px',
+          alignItems: 'center',
+        },
+        '& .MuiAlert-icon': {
+          marginRight: '12px',
+        },
+        '& .MuiAlert-message': {
+          padding: 0,
+        }
+      }}
+    >
+      <Alert 
+        variant="filled" 
+        severity={type} 
+        onClose={() => {}}
+        className='w-full'
+      >
         {message}
       </Alert>
-      </Snackbar>
+    </Snackbar>
   );
 };
 

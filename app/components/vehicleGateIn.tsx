@@ -5,6 +5,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import MuiAccordion, { AccordionProps } from '@mui/material/Accordion';
+import { DateTime } from 'luxon';
 
 type props = {
   vehicleNo: string,
@@ -24,13 +25,24 @@ const Accordion = styled((props: AccordionProps) => (
 
 
 function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation, lastLocationAt, SIN }: props) {
-    const [showVehicle, setShowVehicle] = useState(true);
+    const [expanded, setExpanded] = useState(true);
     const handleIconClick = () => {
-        setShowVehicle(!showVehicle);
+        setExpanded(!expanded);
     };
+
+    const convertUTCToIST = (utcDateString: any) => {
+        const date = DateTime.fromISO(utcDateString, { zone: 'utc' }).plus({ hours: 5, minutes: 30 });
+        if (!date.isValid) {
+          return 'Invalid date';
+        }
+        return date.toFormat('dd-MMM-yyyy hh:mm a');
+    };
+    
+    const formattedLastLocationAt = lastLocationAt ? convertUTCToIST(lastLocationAt) : 'N/A';
+
   return (
     <div>
-        <Accordion>
+        <Accordion expanded={expanded}>
         <AccordionSummary
           expandIcon={<ExpandMoreIcon />}
           aria-controls="panel1a-content"
@@ -38,7 +50,7 @@ function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation
           onClick={handleIconClick}
         >
          <div className="header flex items-center gap-[4px]">
-                    <p className='text-[#131722] text-[18px] font-bold'>Vehicle/Driver </p>
+                    <p className='text-[#3D3D3D] text-[14px] font-semibold'>Vehicle/Driver </p>
                     {/* {showVehicle && <p className='text-[12px]'> - {vehicleNo}</p>} */}
                 </div>
         </AccordionSummary>
@@ -46,12 +58,12 @@ function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation
           <div className="flex gap-[16px]">
             <div className="left flex flex-col gap-[16px] w-[50%]">
               <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         Vehicle Number
                     </div>
-                    <div className="value flex gap-[8px] items-center ">
+                    <div className="value flex gap-[8px] items-center" style={{color: '#3D3D3D'}}>
 
-                        {vehicleNo}
+                        {vehicleNo || 'N/A'}
 
 
                     </div>
@@ -59,59 +71,59 @@ function VehicleGateIn({ vehicleNo, driver, mobile, trackingMethod, lastLocation
 
                 
                 <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         Driver
                     </div>
-                    <div className="value">
-                        {driver}
+                    <div className="value" style={{color: '#3D3D3D'}}>
+                        {driver || 'N/A'}
                     </div>
                 </div>
                 <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         Mobile
                     </div>
-                    <div className="value">
-                        {mobile}
+                    <div className="value" style={{color: '#3D3D3D'}}>
+                        {mobile || 'N/A'}
                     </div>
                 </div>
             </div>
             <div className="right flex flex-col gap-[16px] w-[50%]">
 
                 <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         Tracking Method
                     </div>
-                    <div className="value flex gap-[8px] items-center ">
+                    <div className="value flex gap-[8px] items-center " style={{color: '#3D3D3D'}}>
                         
-                        {trackingMethod}
+                        {trackingMethod || 'N/A'}
 
                         
                     </div>
                 </div>
                 
                 <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         SIN Number
                     </div>
-                    <div className="value">
-                        {SIN}
+                    <div className="value" style={{color: '#3D3D3D'}}>
+                        {SIN || 'N/A'}
                     </div>
                 </div>
                 
                 <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         Last Location At
                     </div>
-                    <div className="value">
-                        {lastLocationAt}
+                    <div className="value" style={{color: '#3D3D3D'}}>
+                        {formattedLastLocationAt || 'N/A'}
                     </div>
                 </div>
                 <div className="detailsSection">
-                    <div className="label">
+                    <div className="label" style={{color: '#71747A'}}>
                         Last Location
                     </div>
-                    <div className="value">
-                        {lastLocation.replace('Unnamed Road,', '')}
+                    <div className="value" style={{color: '#3D3D3D'}}>
+                        {lastLocation?.replace('Unnamed Road,', '') || 'N/A'}
                     </div>
                 </div>
             </div>

@@ -6,10 +6,27 @@ interface CameraModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCapture: (imageSrc: string) => void;
+  part: any;
+  selectedItem: any
+  activeStage: any;
+  setPopupOpen:any
 }
 
-const CameraModal: React.FC<CameraModalProps> = ({ isOpen, onClose, onCapture }) => {
+
+
+const CameraModal: React.FC<CameraModalProps> = ({ isOpen, onClose, onCapture, part, selectedItem, activeStage,setPopupOpen }) => {
   if (!isOpen) return null;
+
+
+  const imagePayload = {
+    checkListId: selectedItem?._id,
+    type: part?.imgType,
+    prompt: part?.prompt,
+    stageName: activeStage?.activeStage?.name
+  }
+
+  // console.log("🚀 ~ file: CameraModal.tsx:15 ~ CameraModal ~ imagePayload:", imagePayload)
+
 
   const handleOutsideClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
@@ -26,7 +43,7 @@ const CameraModal: React.FC<CameraModalProps> = ({ isOpen, onClose, onCapture })
         >
           <CloseIcon />
         </button>
-        <CameraCapture onCapture={onCapture} onClose={onClose} />
+        <CameraCapture onCapture={onCapture} onClose={onClose} imagePayload={imagePayload} setPopupOpen={setPopupOpen} />
       </div>
     </div>
   );

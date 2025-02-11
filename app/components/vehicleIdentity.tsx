@@ -30,7 +30,7 @@ function VehicleIdentity({vehicleNo, sin, soNumber, materials, carrier}: props) 
                         Vehicle Number
                     </div>
                     <div className="value flex gap-[8px] items-center ">
-                        <p>
+                        <p className='text-[#453432] text-[14px] font-normal'>
                             {vehicleNo}
                         </p>
                         {!verified ? ( <>
