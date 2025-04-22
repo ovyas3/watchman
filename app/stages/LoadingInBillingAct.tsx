@@ -8,6 +8,7 @@ import UploadPopUp from "../hooks/uploadPopUp";
 import axios from "axios";
 import { loadingInBillingActValidation } from "../checkStage/loadingInBillingActValidation";
 import { Button } from "@mui/material";
+import { useRouter } from 'next/navigation';
 
 export default function LoadingInBillingAct({activeStage, handleStepClick, driverDts}:any) {
   const [checklistsLIBA, setChecklistsLIBA] = useState<any>(activeStage?.activeStage?.checklist);
@@ -22,6 +23,7 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
 
     const { checkShipment, ShipmentCheckDialog } = shipmentCheck({
       driverDts,
+      activeStage,
       currentStageCode: "LIBA",
       openClose: (open: boolean) => setIsSkipped(!open),
       onSkip: (lastShipment) => {
@@ -31,6 +33,12 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
         handleStepClick(activeStage.activestep + 1);
       }
     });
+
+    const router = useRouter();
+
+    const handleNewVehicle = () => {
+      router.push('/');
+    }
 
     const handleSaveClick = async () => {
       const payload:any = [];
@@ -78,7 +86,7 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
       if(driverDts){
         checkShipment();
       }
-    },[driverDts])
+    },[driverDts, activeStage])
     useEffect(() => {
       const pass = loadingInBillingActValidation(checklistsLIBA);
       setSaveDisabled(!pass);
@@ -324,6 +332,8 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
 
       {/* === Navigation === */}
       <div className="absolute bottom-0 bg-white rounded-[8px] w-full flex justify-between items-center p-1">
+        <div className="flex gap-[20px] items-center">
+        <button onClick={handleNewVehicle} className='bg-blue-600 text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold'>New Vehicle</button>
         <button
           onClick={() => {
             handleStepClick(activeStage.activestep - 1);
@@ -335,6 +345,7 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
         >
           Back
         </button>
+        </div>
         <div className="flex gap-[5px] items-center">
         <button
             onClick={() => {
@@ -350,7 +361,7 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
             onClick={() => {
               handleStepClick(activeStage.activestep + 1);
             }}
-            disabled={!nextStep}
+            //disabled={!nextStep}
             className={` ${!nextStep ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-500 "} text-white text-sm px-8 py-2 rounded-md cursor-pointer duration-300 font-semibold`}
           >
             Next

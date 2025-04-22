@@ -5,12 +5,14 @@ import { DateTime } from 'luxon';
 
 const shipmentCheck = ({
     driverDts,
+    activeStage,
     currentStageCode,
     openClose,
     onSkip,
     onContinue
 }: {
     driverDts: any;
+    activeStage: any;
     currentStageCode: String;
     openClose: (open: boolean) => void;
     onSkip?: (lastShipment: any) => void;
@@ -157,7 +159,7 @@ const shipmentCheck = ({
                 completed: true,
                 stageData: {
                     securityCheck_id: driverDts?._id,
-                    stage_id: driverDts.lastStage,
+                    stage_id: activeStage?.activeStage?._id,
                     start_at: new Date()
                 },
                 add: true

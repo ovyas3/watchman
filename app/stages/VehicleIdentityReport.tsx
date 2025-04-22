@@ -27,6 +27,7 @@ export default function VehicleIdentityReport({
 
   const { checkShipment, ShipmentCheckDialog } = shipmentCheck({
     driverDts,
+    activeStage,
     currentStageCode: "VIR",
     openClose: (open: boolean) => setIsSkipped(!open),
     onSkip: (lastShipment) => {
@@ -41,13 +42,16 @@ export default function VehicleIdentityReport({
     if(driverDts){
       checkShipment();
     }
-  },[driverDts])
+  },[driverDts, activeStage])
   const [nextStep, setNextStep] = useState<any>(null);
   
   const [saveDisabled, setSaveDisabled] = useState(true);
   const [successPopup, setSuccessPopup] = useState(false); // New state for success popup
   const [fadeOut, setFadeOut] = useState(false); // State for fade-out effect
 
+  const handleNewVehicle = () => {
+    router.push('/');
+  }
 
   const handleSaveClick = async () => {
     const payload:any = [];
@@ -416,6 +420,8 @@ export default function VehicleIdentityReport({
 
       {/* ------- navigation bar ------- */}
       <div className="absolute bottom-0 bg-white rounded-[8px] w-full flex justify-between items-center p-1">
+        <div className="flex gap-[20px] items-center">
+        <button onClick={handleNewVehicle} className='bg-blue-600 text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold'>New Vehicle</button>
         <button
           disabled={activeStage.activestep === 0}
           className={` ${
@@ -424,6 +430,7 @@ export default function VehicleIdentityReport({
         >
           Back
         </button>
+        </div>
         <div className="flex gap-[5px] items-center">
           <button
             onClick={() => {

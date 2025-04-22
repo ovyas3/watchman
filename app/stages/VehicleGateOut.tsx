@@ -25,6 +25,10 @@ export default function VehicleGateOut({ activeStage, handleStepClick, driverDts
 
   console.log("🚀 ~ file: VehicleGateOut.tsx:28 ~ VehicleGateOut ~ checkListVGO:", saveDisabled);
 
+  const handleNewVehicle = () => {
+    router.push('/');
+  }
+
   const handleSaveClick = async () => {
     const payload:any = [];
     checkListVGO.map((item:any) => {
@@ -369,6 +373,8 @@ export default function VehicleGateOut({ activeStage, handleStepClick, driverDts
 
       {/* === Bottom Navigation === */}
       <div className="absolute bottom-0 bg-white rounded-[8px] w-full flex justify-between items-center p-1">
+        <div className="flex gap-[20px] items-center">
+        <button onClick={handleNewVehicle} className='bg-blue-600 text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold'>New Vehicle</button>
         <button
           onClick={() => {
             handleStepClick(activeStage.activestep - 1);
@@ -380,6 +386,7 @@ export default function VehicleGateOut({ activeStage, handleStepClick, driverDts
         >
           Back
         </button>
+        </div>
         <div className="flex gap-[5px] items-center">
           <button 
             onClick={() => {handleSaveClick()}}

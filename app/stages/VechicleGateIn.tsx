@@ -10,6 +10,7 @@ import axios from "axios";
 import { vehicleGateInValidation } from "../checkStage/vehicleGateIn";
 import shipmentCheck from "../hooks/shipmentCheck";
 import { enIN } from "date-fns/locale";
+import { useRouter } from 'next/navigation';
 
 export default function VechicleGateIn({ activeStage, handleStepClick, driverDts }: any) {
   const [checklistsVGI, setChecklistsVGI] = useState<any>(activeStage?.activeStage.checklist);
@@ -21,6 +22,12 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
 
 
   console.log("🚀 ~ file: VechicleGateIn.tsx:23 ~ VechicleGateIn ~ checklistsVGI:", checklistsVGI);
+
+  const router = useRouter();
+
+  const handleNewVehicle = () => {
+    router.push('/');
+  }
 
   const handleSaveClick = async () => {
     const payload:any = [];
@@ -74,6 +81,7 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
 
     const { checkShipment, ShipmentCheckDialog } = shipmentCheck({
       driverDts,
+      activeStage,
       currentStageCode: "VGI",
       openClose: (open: boolean) => setIsSkipped(!open),
       onSkip: (lastShipment) => {
@@ -88,7 +96,7 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
       if(driverDts){
         checkShipment();
       }
-    },[driverDts])
+    },[driverDts, activeStage]);
 
   return (
     <div className="w-full h-full relative">
@@ -196,6 +204,8 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
 
       {/* === navigation === */}
       <div className="absolute bottom-0 bg-white rounded-[8px] w-full flex justify-between items-center p-1">
+        <div className="flex gap-[20px] items-center">
+        <button onClick={handleNewVehicle} className='bg-blue-600 text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold'>New Vehicle</button>
         <button
           onClick={() => {
             handleStepClick(activeStage.activestep - 1);
@@ -207,6 +217,7 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
         >
           Back
         </button>
+        </div>
         <div className="flex gap-[5px] items-center">
           <button 
           onClick={() => {

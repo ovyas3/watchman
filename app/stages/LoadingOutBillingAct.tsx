@@ -7,6 +7,7 @@ import axios from "axios";
 import Checkbox from "@mui/material/Checkbox";
 import UploadPopUpTwo from "../hooks/uploadPopUpTwo";
 import { loadingOutBillingActValidation } from "../checkStage/loadingOutBillingActValidation";
+import { useRouter } from 'next/navigation';
 
 export default function LoadingOutBillingAct({
   activeStage,
@@ -23,6 +24,12 @@ export default function LoadingOutBillingAct({
   const [saveDisabled, setSaveDisabled] = useState(true);
   const [successPopup, setSuccessPopup] = useState(false); // New state for success popup
   const [fadeOut, setFadeOut] = useState(false); // State for fade-out effect
+
+  const router = useRouter();
+
+  const handleNewVehicle = () => {
+    router.push('/');
+  }
 
   const handleSaveClick = async () => {
     const payload:any = [];
@@ -454,17 +461,20 @@ export default function LoadingOutBillingAct({
 
       {/* === Navigation === */}
       <div className="absolute bottom-0 bg-white rounded-[8px] w-full flex justify-between items-center p-1">
-        <button
-          onClick={() => {
-            handleStepClick(activeStage.activestep - 1);
-          }}
-          disabled={activeStage.activestep === 0}
-          className={` ${
-            activeStage.activestep === 0 ? "bg-gray-400" : "bg-blue-600"
-          } text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold`}
-        >
-          Back
-        </button>
+      <div className="flex gap-[20px] items-center">
+          <button onClick={handleNewVehicle} className='bg-blue-600 text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold'>New Vehicle</button>
+          <button
+            onClick={() => {
+              handleStepClick(activeStage.activestep - 1);
+            }}
+            disabled={activeStage.activestep === 0}
+            className={` ${
+              activeStage.activestep === 0 ? "bg-gray-400" : "bg-blue-600"
+            } text-white text-sm px-8 py-2 rounded-md cursor-pointer hover:bg-blue-500 duration-300 font-semibold`}
+          >
+            Back
+          </button>
+        </div>
         <div className="flex gap-[5px] items-center">
           <button 
            onClick={()=>{handleSaveClick()}}

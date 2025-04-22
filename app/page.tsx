@@ -54,6 +54,38 @@ function HomePage() {
         });
         setValidVehicle(false);
       }
+      if (data.statusCode == 400) {
+        toast.error("Invalid vehicle number", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      if (data.statusCode == 401) {
+        toast.error("Unauthorized", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      if (data.statusCode == 403) {
+        toast.error("Forbidden", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      if (data.statusCode == 404) {
+        toast.error("Vehicle not found", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
       if (data.statusCode == 200) {
         setValidVehicle(true);
         router.push(`/securityForm?vehicleNo=${vehicleNo}`);
