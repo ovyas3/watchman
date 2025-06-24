@@ -2,6 +2,8 @@ import { Dialog, DialogContent, DialogContentText, DialogTitle, DialogActions, B
 import axios from 'axios';
 import React, { useState } from 'react'
 import { DateTime } from 'luxon';
+import { toast } from "react-toastify";
+import { signOut } from "next-auth/react";
 
 const shipmentCheck = ({
     driverDts,
@@ -118,6 +120,56 @@ const shipmentCheck = ({
             } 
         } catch (error) {
             console.error('Error checking shipment:', error);
+            if ((error as any).status == 500) {
+              toast.error("Server error occurred. Please try again later.", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else if ((error as any).status   == 400) {
+              toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else if ((error as any).status   == 401) {
+              toast.error("Authentication failed. Redirecting to login...", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+              setTimeout(() => {
+                signOut({ redirect: true, callbackUrl: "/" });
+              }, 2000);
+            }
+            else if ((error as any).status   == 403) {
+              toast.error("Access denied. You may not have permission for this vehicle", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else if ((error as any).status   == 404) {
+              toast.error("Vehicle not found", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else {
+              toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            // toast.error("Server error occurred. Please try again later.", {
+            //     hideProgressBar: true,
+            //     autoClose: 2000,
+            //     type: "error",
+            //   });
             setIsDialogOpen(false);
             openClose(false);
         }
@@ -179,10 +231,99 @@ const shipmentCheck = ({
                 
                 return combinedChecklists;
             } catch (error) {         
+                if ((error as any).status == 500) {
+                  toast.error("Server error occurred. Please try again later.", {
+                    hideProgressBar: true,
+                    autoClose: 2000,
+                    type: "error",
+                  });
+                }
+                else if ((error as any).status   == 400) {
+                  toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+                    hideProgressBar: true,
+                    autoClose: 2000,
+                    type: "error",
+                  });
+                }
+                else if ((error as any).status   == 401) {
+                  toast.error("Authentication failed. Redirecting to login...", {
+                    hideProgressBar: true,
+                    autoClose: 2000,
+                    type: "error",
+                  });
+                  setTimeout(() => {
+                    signOut({ redirect: true, callbackUrl: "/" });
+                  }, 2000);
+                }
+                else if ((error as any).status   == 403) {
+                  toast.error("Access denied. You may not have permission for this vehicle", {
+                    hideProgressBar: true,
+                    autoClose: 2000,
+                    type: "error",
+                  });
+                }
+                else if ((error as any).status   == 404) {
+                  toast.error("Vehicle not found", {
+                    hideProgressBar: true,
+                    autoClose: 2000,
+                    type: "error",
+                  });
+                }
+                else {
+                  toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+                    hideProgressBar: true,
+                    autoClose: 2000,
+                    type: "error",
+                  });
+                }    
                 throw error;
             }
         } catch (error) {
-           
+            if ((error as any).status == 500) {
+              toast.error("Server error occurred. Please try again later.", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else if ((error as any).status   == 400) {
+              toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else if ((error as any).status   == 401) {
+              toast.error("Authentication failed. Redirecting to login...", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+              setTimeout(() => {
+                signOut({ redirect: true, callbackUrl: "/" });
+              }, 2000);
+            }
+            else if ((error as any).status   == 403) {
+              toast.error("Access denied. You may not have permission for this vehicle", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else if ((error as any).status   == 404) {
+              toast.error("Vehicle not found", {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            }
+            else {
+              toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+                hideProgressBar: true,
+                autoClose: 2000,
+                type: "error",
+              });
+            } 
             return null;
         }
     };
@@ -231,6 +372,51 @@ const shipmentCheck = ({
             });
         } catch (error) {
             console.error('Error in handleSkip:', error);
+            if ((error as any).status == 500) {
+                toast.error("Server error occurred. Please try again later.", {
+                  hideProgressBar: true,
+                  autoClose: 2000,
+                  type: "error",
+                });
+              }
+              else if ((error as any).status   == 400) {
+                toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+                  hideProgressBar: true,
+                  autoClose: 2000,
+                  type: "error",
+                });
+              }
+              else if ((error as any).status   == 401) {
+                toast.error("Authentication failed. Redirecting to login...", {
+                  hideProgressBar: true,
+                  autoClose: 2000,
+                  type: "error",
+                });
+                setTimeout(() => {
+                  signOut({ redirect: true, callbackUrl: "/" });
+                }, 2000);
+              }
+              else if ((error as any).status   == 403) {
+                toast.error("Access denied. You may not have permission for this vehicle", {
+                  hideProgressBar: true,
+                  autoClose: 2000,
+                  type: "error",
+                });
+              }
+              else if ((error as any).status   == 404) {
+                toast.error("Vehicle not found", {
+                  hideProgressBar: true,
+                  autoClose: 2000,
+                  type: "error",
+                });
+              }
+              else {
+                toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+                  hideProgressBar: true,
+                  autoClose: 2000,
+                  type: "error",
+                });
+            }
             setIsDialogOpen(false);
             openClose(false);
         }

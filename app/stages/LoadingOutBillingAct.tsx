@@ -8,6 +8,8 @@ import Checkbox from "@mui/material/Checkbox";
 import UploadPopUpTwo from "../hooks/uploadPopUpTwo";
 import { loadingOutBillingActValidation } from "../checkStage/loadingOutBillingActValidation";
 import { useRouter } from 'next/navigation';
+import { signOut } from "next-auth/react";
+import { toast } from "react-toastify";
 
 export default function LoadingOutBillingAct({
   activeStage,
@@ -62,9 +64,9 @@ export default function LoadingOutBillingAct({
       },
       data: {lists: payload, completed: false, stageData: stageDataPayload}, 
     };
+    try {
     
     const response = await axios(config);
-    try {
       if (response.data.statusCode === 200) {
         setNextStep(true);
         setSuccessPopup(true);
@@ -75,6 +77,51 @@ export default function LoadingOutBillingAct({
         }, 3000);
       }
     } catch (error) {
+      if ((error as any).status == 500) {
+        toast.error("Server error occurred. Please try again later.", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 400) {
+        toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 401) {
+        toast.error("Authentication failed. Redirecting to login...", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setTimeout(() => {
+          signOut({ redirect: true, callbackUrl: "/" });
+        }, 2000);
+      }
+      else if ((error as any).status   == 403) {
+        toast.error("Access denied. You may not have permission for this vehicle", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 404) {
+        toast.error("Vehicle not found", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else {
+        toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
       console.log(error);
     }
   }

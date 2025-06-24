@@ -9,6 +9,8 @@ import axios from "axios";
 import { loadingInBillingActValidation } from "../checkStage/loadingInBillingActValidation";
 import { Button } from "@mui/material";
 import { useRouter } from 'next/navigation';
+import { signOut } from "next-auth/react";
+import { toast } from "react-toastify";
 
 export default function LoadingInBillingAct({activeStage, handleStepClick, driverDts}:any) {
   const [checklistsLIBA, setChecklistsLIBA] = useState<any>(activeStage?.activeStage?.checklist);
@@ -67,8 +69,8 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
         },
         data: {lists: payload, completed: false, stageData: stageDataPayload}, 
       };
-      const response = await axios(config);
       try {
+        const response = await axios(config);
         if (response.data.statusCode === 200) {
           setNextStep(true);
           setSuccessPopup(true);
@@ -78,6 +80,51 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
             setFadeOut(false); // Hide popup after 3 seconds
           }, 3000);      }
       } catch (error) {
+        if ((error as any).status == 500) {
+          toast.error("Server error occurred. Please try again later.", {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: "error",
+          });
+        }
+        else if ((error as any).status   == 400) {
+          toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: "error",
+          });
+        }
+        else if ((error as any).status   == 401) {
+          toast.error("Authentication failed. Redirecting to login...", {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: "error",
+          });
+          setTimeout(() => {
+            signOut({ redirect: true, callbackUrl: "/" });
+          }, 2000);
+        }
+        else if ((error as any).status   == 403) {
+          toast.error("Access denied. You may not have permission for this vehicle", {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: "error",
+          });
+        }
+        else if ((error as any).status   == 404) {
+          toast.error("Vehicle not found", {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: "error",
+          });
+        }
+        else {
+          toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+            hideProgressBar: true,
+            autoClose: 2000,
+            type: "error",
+          });
+        }
         console.log(error);
       }
     }
@@ -361,7 +408,7 @@ export default function LoadingInBillingAct({activeStage, handleStepClick, drive
             onClick={() => {
               handleStepClick(activeStage.activestep + 1);
             }}
-            //disabled={!nextStep}
+            disabled={!nextStep}
             className={` ${!nextStep ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-500 "} text-white text-sm px-8 py-2 rounded-md cursor-pointer duration-300 font-semibold`}
           >
             Next

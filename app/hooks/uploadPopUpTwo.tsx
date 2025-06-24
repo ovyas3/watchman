@@ -10,6 +10,8 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { MobileDateTimePicker } from "@mui/x-date-pickers/MobileDateTimePicker";
 import TextField from "@mui/material/TextField";
 import axios from "axios";
+import { toast } from "react-toastify";
+import { signOut } from "next-auth/react";
 
 const UploadPopUpTwo = ({
   openClose,
@@ -362,6 +364,51 @@ const handleImageCapture = (capturedImage: any) => {
         return updateObject;
       });
     } catch (error) {
+      if ((error as any).status == 500) {
+        toast.error("Server error occurred. Please try again later.", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 400) {
+        toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 401) {
+        toast.error("Authentication failed. Redirecting to login...", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setTimeout(() => {
+          signOut({ redirect: true, callbackUrl: "/" });
+        }, 2000);
+      }
+      else if ((error as any).status   == 403) {
+        toast.error("Access denied. You may not have permission for this vehicle", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 404) {
+        toast.error("Vehicle not found", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else {
+        toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
       console.log(error);
     }
 

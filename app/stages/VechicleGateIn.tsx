@@ -11,6 +11,8 @@ import { vehicleGateInValidation } from "../checkStage/vehicleGateIn";
 import shipmentCheck from "../hooks/shipmentCheck";
 import { enIN } from "date-fns/locale";
 import { useRouter } from 'next/navigation';
+import { signOut } from "next-auth/react";
+import { toast } from "react-toastify";
 
 export default function VechicleGateIn({ activeStage, handleStepClick, driverDts }: any) {
   const [checklistsVGI, setChecklistsVGI] = useState<any>(activeStage?.activeStage.checklist);
@@ -56,8 +58,8 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
       },
       data: {lists: payload, completed: false, stageData: stageDataPayload}, 
     };
-    const response = await axios(config);
     try {
+      const response = await axios(config);
       if (response.data.statusCode === 200) {
         setNextStep(true);
         setSuccessPopup(true);
@@ -68,6 +70,51 @@ export default function VechicleGateIn({ activeStage, handleStepClick, driverDts
         }, 3000);
       }
     } catch (error) {
+      if ((error as any).status == 500) {
+        toast.error("Server error occurred. Please try again later.", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 400) {
+        toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 401) {
+        toast.error("Authentication failed. Redirecting to login...", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setTimeout(() => {
+          signOut({ redirect: true, callbackUrl: "/" });
+        }, 2000);
+      }
+      else if ((error as any).status   == 403) {
+        toast.error("Access denied. You may not have permission for this vehicle", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else if ((error as any).status   == 404) {
+        toast.error("Vehicle not found", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
+      else {
+        toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+      }
       console.log(error);
     }
   }

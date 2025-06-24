@@ -21,10 +21,16 @@ function HomePage() {
   const [vehicleNo, setVehicleNo] = useState("");
   const PATTERN = /^[A-Za-z0-9\s]*$/;
 
-  if(session){
+  useEffect(() => {
+    if (session && session.user?.data?.accessToken && session.user?.data?.default_unit) {
+      if (localStorage.getItem('accessToken') !== session.user.data.accessToken) {
     localStorage.setItem('accessToken',session.user.data.accessToken);
+      }
+      if (localStorage.getItem('default_unit') !== session.user.data.default_unit) {
     localStorage.setItem('default_unit',session.user.data.default_unit);
   }
+    }
+  }, [session]);
 
   const handleClick = async () => {
     if (!vehicleNo) {
@@ -33,7 +39,17 @@ function HomePage() {
         autoClose: 2000,
         type: "error",
       });
-    } else {
+      return;
+    }
+    if (!session?.user?.data?.accessToken || !session?.user?.data?.default_unit) {
+      toast.error("Session data is missing. Please log in again.", {
+        hideProgressBar: true,
+        autoClose: 2000,
+        type: "error",
+      });
+      return;
+    }
+    try {
       const response = await fetch(
         "https://prod-api.instavans.com/api/thor/security/get_valid_vehicle?" +
           new URLSearchParams({ vehicle_no: vehicleNo }),
@@ -46,50 +62,68 @@ function HomePage() {
         }
       );
       const data = await response.json();
-      if (data.statusCode == 500) {
-        toast.error("Vehicle not found", {
-          hideProgressBar: true,
-          autoClose: 2000,
-          type: "error",
-        });
-        setValidVehicle(false);
-      }
-      if (data.statusCode == 400) {
-        toast.error("Invalid vehicle number", {
-          hideProgressBar: true,
-          autoClose: 2000,
-          type: "error",
-        });
-        setValidVehicle(false);
-      }
-      if (data.statusCode == 401) {
-        toast.error("Unauthorized", {
-          hideProgressBar: true,
-          autoClose: 2000,
-          type: "error",
-        });
-        setValidVehicle(false);
-      }
-      if (data.statusCode == 403) {
-        toast.error("Forbidden", {
-          hideProgressBar: true,
-          autoClose: 2000,
-          type: "error",
-        });
-        setValidVehicle(false);
-      }
-      if (data.statusCode == 404) {
-        toast.error("Vehicle not found", {
-          hideProgressBar: true,
-          autoClose: 2000,
-          type: "error",
-        });
-        setValidVehicle(false);
-      }
       if (data.statusCode == 200) {
         setValidVehicle(true);
         router.push(`/securityForm?vehicleNo=${vehicleNo}`);
       }
+      else if (data.statusCode == 500) {
+        toast.error("Server error occurred. Please try again later.", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      else if (data.statusCode == 400) {
+        toast.error("Invalid vehicle number - Please double-check the vehicle number — make sure there are no extra spaces or typos", {
+          hideProgressBar: true,
+          autoClose: 2500,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      else if (data.statusCode == 401) {
+        toast.error("Authentication failed. Redirecting to login...", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+        setTimeout(() => {
+          signOut({ redirect: true, callbackUrl: "/" });
+        }, 2000);
+      }
+      else if (data.statusCode == 403) {
+        toast.error("Access denied. You may not have permission for this vehicle", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      else if (data.statusCode == 404) {
+        toast.error("Vehicle not found", {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+      else {
+        toast.error(`An Unexpected error occurred, (code: ${data.statusCode})`, {
+          hideProgressBar: true,
+          autoClose: 2000,
+          type: "error",
+        });
+        setValidVehicle(false);
+      }
+    } catch (error) {
+      toast.error("Failed to connect to the server. Please check your connection.", {
+        hideProgressBar: true,
+        autoClose: 2000,
+        type: "error",
+      });
+      setValidVehicle(false);
     }
   };
 
@@ -119,7 +153,7 @@ function HomePage() {
       setParent(units[0].parent_name);
       setUnit(units[0].name);
     }
-  });
+  }, [session]);
 
   const handleLogout = async () => {
     await fetch(

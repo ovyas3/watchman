@@ -37,6 +37,21 @@ function VehicleDts({
         lastLocationAt={driverDts?.lastLocationAt}
         SIN={driverDts?.sinNo || "N/A"}
       />
+      {driverDts?.loadingBay && driverDts?.loadingExecutiveName && (
+        <div className="bg-blue-50 p-3 rounded-lg shadow my-4 border border-blue-200 flex flex-col">
+          <h3 className="text-md font-semibold mb-2 text-blue-700">Assigned Loading Details:</h3>
+          <div className=" flex flex-col">
+            <div>
+              <p className="text-[14px]" style={{color: '#71747A'}}>Loading Bay:</p>
+              <p className="text-sm font-medium text-gray-800"><strong>{driverDts.loadingBay}</strong></p>
+            </div>
+            <div>
+              <p className="text-[14px]" style={{color: '#71747A'}}>Loading Executive:</p>
+              <p className="text-sm font-medium text-gray-800"><strong>{driverDts.loadingExecutiveName}</strong></p>
+            </div>
+          </div>
+        </div>
+      )}
       {(activeStage?.activeStage?.stageCode === "VIR") && (
           <div className="gateInDetails bg-[#fcfcfc] p-[20px]  rounded-[12px]">
             <div className="body">
