@@ -158,13 +158,13 @@ const shipmentCheck = ({
                 type: "error",
               });
             }
-            else {
-              toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
-                hideProgressBar: true,
-                autoClose: 2000,
-                type: "error",
-              });
-            }
+            // else {
+            //   toast.error(`An Unexpected error occurred, (code: ${(error as any).status })`, {
+            //     hideProgressBar: true,
+            //     autoClose: 2000,
+            //     type: "error",
+            //   });
+            // }
             // toast.error("Server error occurred. Please try again later.", {
             //     hideProgressBar: true,
             //     autoClose: 2000,
