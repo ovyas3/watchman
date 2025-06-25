@@ -38,13 +38,12 @@ function SecurityForm({ searchParams }: any) {
   const handleStepClick = (targetStepIndex: number) => {
     const currentStageCode = activeStage?.activeStage?.stageCode;
     const currentStepOrder = activeStage?.activestep;
+    if (allStages[targetStepIndex]?._id) {
+      getSingleStage(allStages[targetStepIndex]._id);
+    }
     if (currentStageCode === VGI_STAGE_CODE && targetStepIndex > currentStepOrder && !driverDts?.loadingBay) {
       setPendingNextStageDetails({ stageId: allStages[targetStepIndex]?._id, stepIndex: targetStepIndex });
       setShowLoadingInfoDialog(true);
-    } else {
-      if (allStages[targetStepIndex]?._id) {
-        getSingleStage(allStages[targetStepIndex]._id);
-      }
     }
   };
 
@@ -307,12 +306,12 @@ function SecurityForm({ searchParams }: any) {
       const lastStageId = driverDts.lastStage;
       const lastStageDetails = allStages?.find((stage: any) => stage._id === lastStageId);
       const vgiStageOrder = allStages?.find((s:any) => s.stageCode === VGI_STAGE_CODE)?.order;
+      getSingleStage(lastStageId);
       if (lastStageDetails && vgiStageOrder !== undefined && lastStageDetails.order > vgiStageOrder && !driverDts.loadingBay && !driverDts.loadingExecutiveName) {
         setPendingNextStageDetails({ stageId: lastStageId, stepIndex: lastStageDetails.order });
         setShowLoadingInfoDialog(true);
-      } else {
-        getSingleStage(lastStageId);
       }
+      //}
       initialStageLoaded.current = true;
     }
   }, [driverDts, allStages]);
