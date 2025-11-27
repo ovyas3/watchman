@@ -309,7 +309,7 @@ function SecurityForm({ searchParams }: any) {
       getSingleStage(lastStageId);
       if (lastStageDetails && vgiStageOrder !== undefined && lastStageDetails.order > vgiStageOrder && !driverDts.loadingBay && !driverDts.loadingExecutiveName) {
         setPendingNextStageDetails({ stageId: lastStageId, stepIndex: lastStageDetails.order });
-        setShowLoadingInfoDialog(true);
+        // setShowLoadingInfoDialog(true);
       }
       //}
       initialStageLoaded.current = true;
